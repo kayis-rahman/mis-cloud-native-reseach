@@ -11,6 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -74,5 +75,36 @@ class CartControllerIT {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(invalid))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getCart_afterAddingItems_returnsAggregatedCart() throws Exception {
+        String body = "{\n" +
+                "  \"productId\": 10,\n" +
+                "  \"quantity\": 1\n" +
+                "}";
+        mockMvc.perform(post("/carts/3/items").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isOk());
+        String body2 = "{\n" +
+                "  \"productId\": 10,\n" +
+                "  \"quantity\": 4\n" +
+                "}";
+        mockMvc.perform(post("/carts/3/items").contentType(MediaType.APPLICATION_JSON).content(body2))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/carts/3").accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value(3))
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.items[0].productId").value(10))
+                .andExpect(jsonPath("$.items[0].quantity").value(5));
+    }
+
+    @Test
+    void getCart_noItems_returnsEmptyCart() throws Exception {
+        mockMvc.perform(get("/carts/999").accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value(999))
+                .andExpect(jsonPath("$.items.length()").value(0));
     }
 }

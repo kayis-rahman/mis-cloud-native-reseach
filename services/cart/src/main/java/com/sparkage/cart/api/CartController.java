@@ -31,6 +31,12 @@ public class CartController {
         return ResponseEntity.ok(toResponse(updated));
     }
 
+    @GetMapping(path = "/{userId}")
+    public ResponseEntity<CartResponse> getCart(@PathVariable("userId") Long userId) {
+        Cart cart = cartService.getCart(userId);
+        return ResponseEntity.ok(toResponse(cart));
+    }
+
     private CartResponse toResponse(Cart cart) {
         List<CartItemResponse> items = cart.getItems().stream()
                 .map(this::toItem)
