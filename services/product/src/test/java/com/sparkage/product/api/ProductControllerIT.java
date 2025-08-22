@@ -15,6 +15,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.math.BigDecimal;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
@@ -88,5 +89,41 @@ class ProductControllerIT {
     void getProduct_notFound_returns404() throws Exception {
         mockMvc.perform(get("/products/999999").accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void createProduct_persistsAndReturns201() throws Exception {
+        String json = "{" +
+                "\"name\":\"Chair\",\n" +
+                "\"description\":\"Office chair\",\n" +
+                "\"category\":\"Furniture\",\n" +
+                "\"price\":159.50,\n" +
+                "\"stock\":12" +
+                "}";
+
+        mockMvc.perform(post("/products")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().isCreated())
+                .andExpect(header().exists("Location"))
+                .andExpect(jsonPath("$.id").exists())
+                .andExpect(jsonPath("$.name").value("Chair"))
+                .andExpect(jsonPath("$.category").value("Furniture"))
+                .andExpect(jsonPath("$.price").value(159.50))
+                .andExpect(jsonPath("$.stock").value(12));
+    }
+
+    @Test
+    void createProduct_validationError_returns400() throws Exception {
+        String invalid = "{" +
+                "\"name\":\"\",\n" +
+                "\"price\":-1,\n" +
+                "\"stock\":-5" +
+                "}";
+
+        mockMvc.perform(post("/products")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(invalid))
+                .andExpect(status().isBadRequest());
     }
 }

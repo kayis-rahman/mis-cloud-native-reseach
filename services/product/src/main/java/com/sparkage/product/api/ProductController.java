@@ -1,5 +1,6 @@
 package com.sparkage.product.api;
 
+import com.sparkage.product.api.dto.CreateProductRequest;
 import com.sparkage.product.api.dto.ProductDetails;
 import com.sparkage.product.api.dto.ProductSummary;
 import com.sparkage.product.model.Product;
@@ -10,14 +11,13 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.net.URI;
 import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
@@ -52,7 +52,16 @@ public class ProductController {
     public ProductDetails getProduct(@PathVariable("productId") Long productId) {
         Product p = repository.findById(productId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "product not found"));
-        return new ProductDetails(p.getId(), p.getName(), p.getDescription(), p.getCategory(), p.getPrice(), p.getCreatedAt());
+        return new ProductDetails(p.getId(), p.getName(), p.getDescription(), p.getCategory(), p.getPrice(), p.getStock(), p.getCreatedAt());
+    }
+
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ProductDetails> createProduct(@RequestBody @jakarta.validation.Valid CreateProductRequest req) {
+        Product p = new Product(req.getName(), req.getDescription(), req.getCategory(), req.getPrice());
+        p.setStock(req.getStock());
+        Product saved = repository.save(p);
+        ProductDetails body = new ProductDetails(saved.getId(), saved.getName(), saved.getDescription(), saved.getCategory(), saved.getPrice(), saved.getStock(), saved.getCreatedAt());
+        return ResponseEntity.created(URI.create("/products/" + saved.getId())).body(body);
     }
 
     private Pageable toPageable(int page, int size, String sort) {

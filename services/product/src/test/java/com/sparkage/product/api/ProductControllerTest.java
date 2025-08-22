@@ -19,6 +19,7 @@ import java.util.Optional;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(ProductController.class)
@@ -70,5 +71,48 @@ class ProductControllerTest {
 
         mockMvc.perform(get("/products/999").accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void createProduct_success_returns201AndBody() throws Exception {
+        Product toReturn = new Product("New Gadget", "Cool gadget", "Gadgets", new BigDecimal("49.99"));
+        toReturn.setId(100L);
+        toReturn.setStock(5);
+        toReturn.setCreatedAt(Instant.parse("2025-01-01T00:00:00Z"));
+        Mockito.when(productRepository.save(any(Product.class))).thenReturn(toReturn);
+
+        String json = "{" +
+                "\"name\":\"New Gadget\",\n" +
+                "\"description\":\"Cool gadget\",\n" +
+                "\"category\":\"Gadgets\",\n" +
+                "\"price\":49.99,\n" +
+                "\"stock\":5" +
+                "}";
+
+        mockMvc.perform(post("/products")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().isCreated())
+                .andExpect(header().string("Location", "/products/100"))
+                .andExpect(jsonPath("$.id").value(100))
+                .andExpect(jsonPath("$.name").value("New Gadget"))
+                .andExpect(jsonPath("$.category").value("Gadgets"))
+                .andExpect(jsonPath("$.price").value(49.99))
+                .andExpect(jsonPath("$.stock").value(5))
+                .andExpect(jsonPath("$.createdAt").value("2025-01-01T00:00:00Z"));
+    }
+
+    @Test
+    void createProduct_validationErrors_returns400() throws Exception {
+        String invalid = "{" +
+                "\"name\":\"\",\n" +
+                "\"price\":-10,\n" +
+                "\"stock\":-1" +
+                "}";
+
+        mockMvc.perform(post("/products")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(invalid))
+                .andExpect(status().isBadRequest());
     }
 }

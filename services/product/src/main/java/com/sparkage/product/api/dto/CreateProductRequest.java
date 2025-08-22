@@ -1,31 +1,25 @@
 package com.sparkage.product.api.dto;
 
+import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
-import java.time.Instant;
 
-public class ProductDetails {
-    private Long id;
+public class CreateProductRequest {
+    @NotBlank
     private String name;
+
     private String description;
+
     private String category;
+
+    @NotNull
+    @DecimalMin(value = "0.00", inclusive = true)
     private BigDecimal price;
+
+    @NotNull
+    @Min(0)
     private Integer stock;
-    private Instant createdAt;
 
-    public ProductDetails() {}
-
-    public ProductDetails(Long id, String name, String description, String category, BigDecimal price, Integer stock, Instant createdAt) {
-        this.id = id;
-        this.name = name;
-        this.description = description;
-        this.category = category;
-        this.price = price;
-        this.stock = stock;
-        this.createdAt = createdAt;
-    }
-
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public CreateProductRequest() {}
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
@@ -41,7 +35,4 @@ public class ProductDetails {
 
     public Integer getStock() { return stock; }
     public void setStock(Integer stock) { this.stock = stock; }
-
-    public Instant getCreatedAt() { return createdAt; }
-    public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
 }
