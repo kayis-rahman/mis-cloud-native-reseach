@@ -11,8 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
@@ -106,5 +105,32 @@ class CartControllerIT {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.userId").value(999))
                 .andExpect(jsonPath("$.items.length()").value(0));
+    }
+
+    @Test
+    void put_updatesQuantity_and_delete_removesItem() throws Exception {
+        // Add item
+        String add = "{\n  \"productId\": 200,\n  \"quantity\": 2\n}";
+        mockMvc.perform(post("/carts/10/items").contentType(MediaType.APPLICATION_JSON).content(add))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].quantity").value(2));
+        // Update to exact quantity 7
+        String putBody = "{\n  \"quantity\": 7\n}";
+        mockMvc.perform(put("/carts/10/items/200").contentType(MediaType.APPLICATION_JSON).content(putBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].quantity").value(7));
+        // Delete
+        mockMvc.perform(delete("/carts/10/items/200"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(0));
+    }
+
+    @Test
+    void put_delete_notFound_return404() throws Exception {
+        // No item exists yet
+        mockMvc.perform(put("/carts/11/items/999").contentType(MediaType.APPLICATION_JSON).content("{\n  \"quantity\": 3\n}"))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(delete("/carts/11/items/999"))
+                .andExpect(status().isNotFound());
     }
 }

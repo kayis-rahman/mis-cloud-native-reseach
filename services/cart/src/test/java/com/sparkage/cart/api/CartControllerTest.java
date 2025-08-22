@@ -15,8 +15,7 @@ import java.util.Arrays;
 import java.util.Collections;
 
 import static org.mockito.ArgumentMatchers.eq;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(CartController.class)
@@ -60,6 +59,54 @@ class CartControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(invalid))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void updateQuantity_success_returnsUpdatedCart() throws Exception {
+        Cart cart = new Cart(2L);
+        cart.setItems(Arrays.asList(new CartItem(50L, 7)));
+        Mockito.when(cartService.updateItemQuantity(eq(2L), eq(50L), eq(7))).thenReturn(cart);
+
+        String body = "{\n  \"quantity\": 7\n}";
+        mockMvc.perform(put("/carts/2/items/50").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value(2))
+                .andExpect(jsonPath("$.items[0].productId").value(50))
+                .andExpect(jsonPath("$.items[0].quantity").value(7));
+    }
+
+    @Test
+    void updateQuantity_validationError_returns400() throws Exception {
+        String invalid = "{\n  \"quantity\": 0\n}";
+        mockMvc.perform(put("/carts/2/items/50").contentType(MediaType.APPLICATION_JSON).content(invalid))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void updateQuantity_notFound_returns404() throws Exception {
+        Mockito.when(cartService.updateItemQuantity(eq(3L), eq(99L), eq(5)))
+                .thenThrow(new CartService.NotFoundException("not found"));
+        String body = "{\n  \"quantity\": 5\n}";
+        mockMvc.perform(put("/carts/3/items/99").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void deleteItem_success_returnsUpdatedCart() throws Exception {
+        Cart cart = new Cart(4L);
+        cart.setItems(Collections.emptyList());
+        Mockito.when(cartService.removeItem(4L, 77L)).thenReturn(cart);
+        mockMvc.perform(delete("/carts/4/items/77"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value(4))
+                .andExpect(jsonPath("$.items.length()").value(0));
+    }
+
+    @Test
+    void deleteItem_notFound_returns404() throws Exception {
+        Mockito.when(cartService.removeItem(4L, 88L)).thenThrow(new CartService.NotFoundException("not found"));
+        mockMvc.perform(delete("/carts/4/items/88"))
+                .andExpect(status().isNotFound());
     }
 
     @Test

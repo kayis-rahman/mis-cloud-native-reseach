@@ -38,4 +38,27 @@ class CartServiceTest {
         assertThrows(IllegalArgumentException.class, () -> cartService.addItem(1L, null, 1));
         assertThrows(IllegalArgumentException.class, () -> cartService.addItem(1L, 1L, 0));
     }
+
+    @Test
+    void updateItemQuantity_setsExactQuantity_and_validates() {
+        cartService.addItem(2L, 10L, 2);
+        Cart updated = cartService.updateItemQuantity(2L, 10L, 7);
+        assertEquals(7, updated.getItems().get(0).getQuantity());
+        assertThrows(IllegalArgumentException.class, () -> cartService.updateItemQuantity(2L, 10L, 0));
+    }
+
+    @Test
+    void updateItemQuantity_notFound_throws() {
+        assertThrows(CartService.NotFoundException.class, () -> cartService.updateItemQuantity(3L, 99L, 1));
+        cartService.addItem(3L, 1L, 1);
+        assertThrows(CartService.NotFoundException.class, () -> cartService.updateItemQuantity(3L, 99L, 1));
+    }
+
+    @Test
+    void removeItem_success_and_notFound() {
+        cartService.addItem(4L, 55L, 1);
+        Cart afterRemove = cartService.removeItem(4L, 55L);
+        assertEquals(0, afterRemove.getItems().size());
+        assertThrows(CartService.NotFoundException.class, () -> cartService.removeItem(4L, 55L));
+    }
 }
