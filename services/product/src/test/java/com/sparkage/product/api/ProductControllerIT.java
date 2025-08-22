@@ -16,6 +16,7 @@ import java.math.BigDecimal;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
@@ -138,5 +139,21 @@ class ProductControllerIT {
         mockMvc.perform(get("/products?sort=price,desc").accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].price").value(1299.00));
+    }
+
+    @Test
+    void delete_existing_product_returns204_and_then_get_returns404() throws Exception {
+        // existingId is set in setup()
+        mockMvc.perform(delete("/products/" + existingId))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/products/" + existingId))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void delete_non_existing_product_returns404() throws Exception {
+        mockMvc.perform(delete("/products/99999999"))
+                .andExpect(status().isNotFound());
     }
 }

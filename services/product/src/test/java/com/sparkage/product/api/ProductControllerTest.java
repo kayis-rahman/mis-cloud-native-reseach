@@ -22,6 +22,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(ProductController.class)
@@ -149,5 +150,23 @@ class ProductControllerTest {
         assert used.getPageSize() == 20;
         Sort.Order createdAtOrder = used.getSort().getOrderFor("createdAt");
         assert createdAtOrder != null && createdAtOrder.getDirection() == Sort.Direction.DESC;
+    }
+
+    @Test
+    void deleteProduct_existing_returns204AndCallsDelete() throws Exception {
+        Mockito.when(productRepository.existsById(10L)).thenReturn(true);
+
+        mockMvc.perform(delete("/products/10").accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNoContent());
+
+        verify(productRepository).deleteById(10L);
+    }
+
+    @Test
+    void deleteProduct_notExisting_returns404() throws Exception {
+        Mockito.when(productRepository.existsById(999L)).thenReturn(false);
+
+        mockMvc.perform(delete("/products/999").accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNotFound());
     }
 }

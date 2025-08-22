@@ -65,6 +65,15 @@ public class ProductController {
         return ResponseEntity.created(URI.create("/products/" + saved.getId())).body(body);
     }
 
+    @DeleteMapping("/{productId}")
+    public ResponseEntity<Void> deleteProduct(@PathVariable("productId") Long productId) {
+        if (!repository.existsById(productId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "product not found");
+        }
+        repository.deleteById(productId);
+        return ResponseEntity.noContent().build();
+    }
+
     private Pageable toPageable(int page, int size, String sort) {
         if (size <= 0) size = 20;
         if (page < 0) page = 0;
