@@ -13,10 +13,21 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import com.sparkage.identity.model.Role;
+import com.sparkage.identity.model.User;
+import com.sparkage.identity.service.RoleRepository;
+import com.sparkage.identity.service.UserRepository;
+
 @SpringBootTest
 @AutoConfigureMockMvc
 @org.springframework.test.context.ActiveProfiles("test")
 class UserControllerTest {
+
+    @Autowired
+    private RoleRepository roleRepository;
+
+    @Autowired
+    private UserRepository userRepository;
 
     @Autowired
     private MockMvc mockMvc;
@@ -204,5 +215,55 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.errors.username").exists())
                 .andExpect(jsonPath("$.errors.email").exists())
                 .andExpect(jsonPath("$.errors.password").exists());
+    }
+
+    @Test
+    void getUserRoles_empty_returns200AndEmptyList() throws Exception {
+        String unique = java.util.UUID.randomUUID().toString().substring(0,8);
+        String reg = String.format("{\"username\":\"rolesuser_%s\",\"email\":\"roles_%s@example.com\",\"password\":\"Password123\"}", unique, unique);
+        String id = objectMapper.readTree(
+                mockMvc.perform(post("/users/register").contentType(MediaType.APPLICATION_JSON).content(reg))
+                        .andExpect(status().isCreated())
+                        .andReturn().getResponse().getContentAsString()
+        ).get("id").asText();
+
+        mockMvc.perform(get("/users/" + id + "/roles"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
+    void getUserRoles_withAssignedRole_returns200WithRolesAndPermissions() throws Exception {
+        String unique = java.util.UUID.randomUUID().toString().substring(0,8);
+        String username = "rolesuser2_" + unique;
+        String email = "roles2_" + unique + "@example.com";
+        String reg = String.format("{\"username\":\"%s\",\"email\":\"%s\",\"password\":\"Password123\"}", username, email);
+        String body = mockMvc.perform(post("/users/register").contentType(MediaType.APPLICATION_JSON).content(reg))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String userId = objectMapper.readTree(body).get("id").asText();
+
+        // Create role and assign to user via repositories
+        Role role = new Role();
+        role.setName("ADMIN_" + unique);
+        java.util.Set<String> perms = new java.util.HashSet<>();
+        perms.add("USER_READ");
+        perms.add("USER_UPDATE");
+        role.setPermissions(perms);
+        role = roleRepository.save(role);
+
+        java.util.UUID uid = java.util.UUID.fromString(userId);
+        User user = userRepository.findById(uid).orElseThrow();
+        user.getRoles().add(role);
+        userRepository.save(user);
+
+        mockMvc.perform(get("/users/" + userId + "/roles"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(role.getId().toString()))
+                .andExpect(jsonPath("$[0].name").value(role.getName()))
+                .andExpect(jsonPath("$[0].permissions").isArray())
+                .andExpect(jsonPath("$[0].permissions").isNotEmpty());
     }
 }

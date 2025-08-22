@@ -54,4 +54,13 @@ public class UserController {
         UserResponse response = new UserResponse(user.getId(), user.getUsername(), user.getEmail(), user.getCreatedAt());
         return ResponseEntity.ok(response);
     }
+
+    @GetMapping("/{userId}/roles")
+    public ResponseEntity<java.util.List<com.sparkage.identity.api.dto.RoleResponse>> getRoles(@PathVariable java.util.UUID userId) {
+        java.util.List<com.sparkage.identity.model.Role> roles = userService.getRoles(userId);
+        java.util.List<com.sparkage.identity.api.dto.RoleResponse> resp = roles.stream()
+                .map(r -> new com.sparkage.identity.api.dto.RoleResponse(r.getId(), r.getName(), r.getPermissions()))
+                .toList();
+        return ResponseEntity.ok(resp);
+    }
 }

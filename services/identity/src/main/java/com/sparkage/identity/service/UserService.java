@@ -118,4 +118,9 @@ public class UserService {
     public static class NotFoundException extends RuntimeException {
         public NotFoundException(String message) { super(message); }
     }
+
+    public java.util.List<com.sparkage.identity.model.Role> getRoles(UUID userId) {
+        User user = getById(userId);
+        return new java.util.ArrayList<>(user.getRoles());
+    }
 }
