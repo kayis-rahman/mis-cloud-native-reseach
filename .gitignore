@@ -23,7 +23,7 @@ out/
 !/.mvn/wrapper/maven-wrapper.jar
 !/.mvn/wrapper/maven-wrapper.properties
 # Build outputs
-*/target/
+**/target/
 
 # Gradle (if present)
 .gradle/
