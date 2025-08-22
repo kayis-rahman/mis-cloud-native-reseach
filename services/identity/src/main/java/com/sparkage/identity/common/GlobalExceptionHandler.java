@@ -47,4 +47,15 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         body.put("errors", errors);
         return ResponseEntity.badRequest().body(body);
     }
+
+    @ExceptionHandler(UserService.AuthFailedException.class)
+    public ResponseEntity<Object> handleAuthFailed(UserService.AuthFailedException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", Instant.now().toString());
+        body.put("status", HttpStatus.UNAUTHORIZED.value());
+        Map<String, String> errors = new HashMap<>();
+        errors.put("auth", ex.getMessage());
+        body.put("errors", errors);
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body);
+    }
 }

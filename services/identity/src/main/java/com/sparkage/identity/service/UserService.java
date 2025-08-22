@@ -59,4 +59,24 @@ public class UserService {
     public static class UserAlreadyExistsException extends RuntimeException {
         public UserAlreadyExistsException(String message) { super(message); }
     }
+
+    public User authenticate(String usernameOrEmail, String password) {
+        String identifier = usernameOrEmail == null ? "" : usernameOrEmail.trim();
+        String passwordHash = hashPassword(password == null ? "" : password);
+        Optional<User> userOpt;
+        if (identifier.contains("@")) {
+            userOpt = repo.findByEmailIgnoreCase(identifier);
+        } else {
+            userOpt = repo.findByUsernameIgnoreCase(identifier);
+        }
+        User user = userOpt.orElseThrow(() -> new AuthFailedException("invalid credentials"));
+        if (!user.getPasswordHash().equals(passwordHash)) {
+            throw new AuthFailedException("invalid credentials");
+        }
+        return user;
+    }
+
+    public static class AuthFailedException extends RuntimeException {
+        public AuthFailedException(String message) { super(message); }
+    }
 }

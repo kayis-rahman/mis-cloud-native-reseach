@@ -67,4 +67,37 @@ class UserControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.duplicate").value("email already registered"));
     }
+
+    @Test
+    void login_success_withUsernameOrEmail_returnsTokenAndUser() throws Exception {
+        String reg = "{\"username\":\"mark\",\"email\":\"mark@example.com\",\"password\":\"Password123\"}";
+        mockMvc.perform(post("/users/register").contentType(MediaType.APPLICATION_JSON).content(reg))
+                .andExpect(status().isCreated());
+
+        String loginByUsername = "{\"usernameOrEmail\":\"mark\",\"password\":\"Password123\"}";
+        mockMvc.perform(post("/users/login").contentType(MediaType.APPLICATION_JSON).content(loginByUsername))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").exists())
+                .andExpect(jsonPath("$.user.username").value("mark"))
+                .andExpect(jsonPath("$.user.email").value("mark@example.com"));
+
+        String loginByEmail = "{\"usernameOrEmail\":\"mark@example.com\",\"password\":\"Password123\"}";
+        mockMvc.perform(post("/users/login").contentType(MediaType.APPLICATION_JSON).content(loginByEmail))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").exists())
+                .andExpect(jsonPath("$.user.username").value("mark"))
+                .andExpect(jsonPath("$.user.email").value("mark@example.com"));
+    }
+
+    @Test
+    void login_invalidCredentials_returns401() throws Exception {
+        String reg = "{\"username\":\"kate\",\"email\":\"kate@example.com\",\"password\":\"Password123\"}";
+        mockMvc.perform(post("/users/register").contentType(MediaType.APPLICATION_JSON).content(reg))
+                .andExpect(status().isCreated());
+
+        String badLogin = "{\"usernameOrEmail\":\"kate\",\"password\":\"wrong\"}";
+        mockMvc.perform(post("/users/login").contentType(MediaType.APPLICATION_JSON).content(badLogin))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.errors.auth").value("invalid credentials"));
+    }
 }

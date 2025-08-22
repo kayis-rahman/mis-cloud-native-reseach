@@ -17,9 +17,11 @@ import jakarta.validation.Valid;
 public class UserController {
 
     private final UserService userService;
+    private final com.sparkage.identity.service.JwtService jwtService;
 
-    public UserController(UserService userService) {
+    public UserController(UserService userService, com.sparkage.identity.service.JwtService jwtService) {
         this.userService = userService;
+        this.jwtService = jwtService;
     }
 
     @PostMapping("/register")
@@ -27,5 +29,14 @@ public class UserController {
         User user = userService.register(request);
         UserResponse response = new UserResponse(user.getId(), user.getUsername(), user.getEmail(), user.getCreatedAt());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<com.sparkage.identity.api.dto.LoginResponse> login(@Valid @RequestBody com.sparkage.identity.api.dto.LoginRequest request) {
+        User user = userService.authenticate(request.getUsernameOrEmail(), request.getPassword());
+        String token = jwtService.createToken(user);
+        UserResponse userResp = new UserResponse(user.getId(), user.getUsername(), user.getEmail(), user.getCreatedAt());
+        com.sparkage.identity.api.dto.LoginResponse resp = new com.sparkage.identity.api.dto.LoginResponse(token, userResp);
+        return ResponseEntity.ok(resp);
     }
 }
