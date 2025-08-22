@@ -3,6 +3,7 @@ package com.sparkage.product.api;
 import com.sparkage.product.api.dto.CreateProductRequest;
 import com.sparkage.product.api.dto.ProductDetails;
 import com.sparkage.product.api.dto.ProductSummary;
+import com.sparkage.product.api.dto.UpdateProductRequest;
 import com.sparkage.product.model.Product;
 import com.sparkage.product.service.ProductRepository;
 import org.springframework.data.domain.Page;

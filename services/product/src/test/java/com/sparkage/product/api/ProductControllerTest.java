@@ -3,6 +3,7 @@ package com.sparkage.product.api;
 import com.sparkage.product.model.Product;
 import com.sparkage.product.service.ProductRepository;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -18,6 +19,7 @@ import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -114,5 +116,38 @@ class ProductControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(invalid))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void listProducts_withSortParam_usesAscendingPrice() throws Exception {
+        // Return empty page but capture Pageable
+        Mockito.when(productRepository.findAll(any(org.springframework.data.jpa.domain.Specification.class), any(Pageable.class)))
+                .thenAnswer(invocation -> new PageImpl<>(Collections.emptyList(), invocation.getArgument(1), 0));
+
+        mockMvc.perform(get("/products?sort=price,asc").accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+        verify(productRepository).findAll(any(org.springframework.data.jpa.domain.Specification.class), pageableCaptor.capture());
+        Pageable used = pageableCaptor.getValue();
+        Sort.Order priceOrder = used.getSort().getOrderFor("price");
+        assert priceOrder != null && priceOrder.getDirection() == Sort.Direction.ASC;
+    }
+
+    @Test
+    void listProducts_negativePageAndSize_defaultsApplied() throws Exception {
+        Mockito.when(productRepository.findAll(any(org.springframework.data.jpa.domain.Specification.class), any(Pageable.class)))
+                .thenAnswer(invocation -> new PageImpl<>(Collections.emptyList(), invocation.getArgument(1), 0));
+
+        mockMvc.perform(get("/products?page=-1&size=0").accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+        verify(productRepository).findAll(any(org.springframework.data.jpa.domain.Specification.class), pageableCaptor.capture());
+        Pageable used = pageableCaptor.getValue();
+        assert used.getPageNumber() == 0;
+        assert used.getPageSize() == 20;
+        Sort.Order createdAtOrder = used.getSort().getOrderFor("createdAt");
+        assert createdAtOrder != null && createdAtOrder.getDirection() == Sort.Direction.DESC;
     }
 }

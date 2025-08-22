@@ -126,4 +126,17 @@ class ProductControllerIT {
                         .content(invalid))
                 .andExpect(status().isBadRequest());
     }
+
+    @Test
+    void sort_byPriceAscAndDesc_returnsExpectedFirstItem() throws Exception {
+        // Ascending: the cheapest item (9.99) should be first
+        mockMvc.perform(get("/products?sort=price,asc").accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].price").value(9.99));
+
+        // Descending: the most expensive item (1299.00) should be first
+        mockMvc.perform(get("/products?sort=price,desc").accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].price").value(1299.00));
+    }
 }
