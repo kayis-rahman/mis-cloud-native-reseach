@@ -20,12 +20,14 @@ out/
 
 # Maven
 # Keep wrapper files tracked; ignore general build outputs
+# Do not ignore .mvn to allow wrapper; many teams commit wrapper
+# If you decide to ignore, remove the next two negations
 !/.mvn/wrapper/maven-wrapper.jar
 !/.mvn/wrapper/maven-wrapper.properties
 # Build outputs
-*/target/
+target/
 
-# Gradle (if present)
+# Gradle (if present in this repo)
 .gradle/
 build/
 !gradle/wrapper/gradle-wrapper.jar
@@ -50,7 +52,7 @@ application-*.local.yml
 # Docker local overrides
 docker-compose.override.yml
 
-# Node (if present in the monorepo)
+# Node (if this service adds a UI later)
 node_modules/
 coverage/
 

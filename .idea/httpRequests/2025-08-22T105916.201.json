@@ -1,0 +1,14 @@
+{
+  "token": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOjEsInJvbGVzIjpbIlVTRVIiXSwiZW1haWwiOiJlbWFpbEBnbWFpbC5jb20iLCJ1c2VybmFtZSI6InVzZXJuYW1lIiwiaWF0IjoxNzU1ODQwNTU2LCJleHAiOjE3NTU4NzY1NTZ9.sON8TJy2Ulcs6w1bA1Y_3Xf6zx7r5aQPwXrVorDf8Y0",
+  "user": {
+    "id": 1,
+    "username": "username",
+    "email": "email@gmail.com",
+    "firstName": "First",
+    "lastName": "Last",
+    "enabled": true,
+    "roles": [
+      "USER"
+    ]
+  }
+}
