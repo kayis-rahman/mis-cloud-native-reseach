@@ -10,6 +10,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
@@ -127,5 +128,81 @@ class UserControllerTest {
         mockMvc.perform(get("/users/" + randomId))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.errors.notFound").value("user not found"));
+    }
+
+    @Test
+    void update_success_returns200_andUpdatedFields() throws Exception {
+        String reg = "{\"username\":\"tom\",\"email\":\"tom@example.com\",\"password\":\"Password123\"}";
+        String id = objectMapper.readTree(
+                mockMvc.perform(post("/users/register").contentType(MediaType.APPLICATION_JSON).content(reg))
+                        .andExpect(status().isCreated())
+                        .andReturn()
+                        .getResponse()
+                        .getContentAsString()
+        ).get("id").asText();
+
+        String updateJson = "{\"username\":\"tommy\",\"email\":\"tommy@example.com\"}";
+        mockMvc.perform(put("/users/" + id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateJson))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(id))
+                .andExpect(jsonPath("$.username").value("tommy"))
+                .andExpect(jsonPath("$.email").value("tommy@example.com"));
+    }
+
+    @Test
+    void update_duplicateUsernameOrEmail_returns400() throws Exception {
+        String u1 = "{\"username\":\"dup1\",\"email\":\"dup1@example.com\",\"password\":\"Password123\"}";
+        String u2 = "{\"username\":\"dup2\",\"email\":\"dup2@example.com\",\"password\":\"Password123\"}";
+        String id1 = objectMapper.readTree(
+                mockMvc.perform(post("/users/register").contentType(MediaType.APPLICATION_JSON).content(u1))
+                        .andExpect(status().isCreated())
+                        .andReturn().getResponse().getContentAsString()).get("id").asText();
+        mockMvc.perform(post("/users/register").contentType(MediaType.APPLICATION_JSON).content(u2))
+                .andExpect(status().isCreated());
+
+        // try to set username to existing one
+        mockMvc.perform(put("/users/" + id1)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"dup2\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.duplicate").value("username already taken"));
+
+        // try to set email to existing one
+        mockMvc.perform(put("/users/" + id1)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"dup2@example.com\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.duplicate").value("email already registered"));
+    }
+
+    @Test
+    void update_notFound_returns404() throws Exception {
+        String randomId = java.util.UUID.randomUUID().toString();
+        mockMvc.perform(put("/users/" + randomId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"nope\"}"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.errors.notFound").value("user not found"));
+    }
+
+    @Test
+    void update_validationErrors_returns400() throws Exception {
+        String reg = "{\"username\":\"val\",\"email\":\"val@example.com\",\"password\":\"Password123\"}";
+        String id = objectMapper.readTree(
+                mockMvc.perform(post("/users/register").contentType(MediaType.APPLICATION_JSON).content(reg))
+                        .andExpect(status().isCreated())
+                        .andReturn().getResponse().getContentAsString()).get("id").asText();
+
+        // invalid email and too short username/password
+        String bad = "{\"username\":\"ab\",\"email\":\"bad-email\",\"password\":\"short\"}";
+        mockMvc.perform(put("/users/" + id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(bad))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.username").exists())
+                .andExpect(jsonPath("$.errors.email").exists())
+                .andExpect(jsonPath("$.errors.password").exists());
     }
 }

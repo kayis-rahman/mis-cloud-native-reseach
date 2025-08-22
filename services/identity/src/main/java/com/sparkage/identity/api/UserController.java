@@ -1,5 +1,6 @@
 package com.sparkage.identity.api;
 
+import com.sparkage.identity.api.dto.UpdateUserRequest;
 import com.sparkage.identity.api.dto.UserRegistrationRequest;
 import com.sparkage.identity.api.dto.UserResponse;
 import com.sparkage.identity.model.User;
@@ -43,6 +44,13 @@ public class UserController {
     @GetMapping("/{userId}")
     public ResponseEntity<UserResponse> getById(@PathVariable java.util.UUID userId) {
         User user = userService.getById(userId);
+        UserResponse response = new UserResponse(user.getId(), user.getUsername(), user.getEmail(), user.getCreatedAt());
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/{userId}")
+    public ResponseEntity<UserResponse> update(@PathVariable java.util.UUID userId, @Valid @RequestBody UpdateUserRequest request) {
+        User user = userService.update(userId, request);
         UserResponse response = new UserResponse(user.getId(), user.getUsername(), user.getEmail(), user.getCreatedAt());
         return ResponseEntity.ok(response);
     }

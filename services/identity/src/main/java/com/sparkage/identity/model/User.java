@@ -2,6 +2,7 @@ package com.sparkage.identity.model;
 
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UuidGenerator;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -13,6 +14,8 @@ import java.util.UUID;
 })
 public class User {
     @Id
+    @GeneratedValue
+    @UuidGenerator
     @Column(nullable = false, updatable = false)
     private UUID id;
 
@@ -41,9 +44,6 @@ public class User {
 
     @PrePersist
     public void prePersist() {
-        if (this.id == null) {
-            this.id = UUID.randomUUID();
-        }
         if (this.username != null) this.username = this.username.trim();
         if (this.email != null) this.email = this.email.trim();
     }

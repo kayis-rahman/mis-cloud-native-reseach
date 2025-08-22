@@ -1,5 +1,6 @@
 package com.sparkage.identity.service;
 
+import com.sparkage.identity.api.dto.UpdateUserRequest;
 import com.sparkage.identity.api.dto.UserRegistrationRequest;
 import com.sparkage.identity.model.User;
 import org.springframework.stereotype.Service;
@@ -7,7 +8,6 @@ import org.springframework.stereotype.Service;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -44,6 +44,37 @@ public class UserService {
         user.setPasswordHash(hash);
         repo.save(user);
         return user;
+    }
+
+    public User update(UUID userId, UpdateUserRequest req) {
+        User user = getById(userId);
+
+        if (req.getUsername() != null) {
+            String newUsername = req.getUsername().trim();
+            // If username actually changes
+            if (!newUsername.equalsIgnoreCase(user.getUsername())) {
+                Optional<User> existing = repo.findByUsernameIgnoreCase(newUsername);
+                if (existing.isPresent() && !existing.get().getId().equals(user.getId())) {
+                    throw new UserAlreadyExistsException("username already taken");
+                }
+                user.setUsername(newUsername);
+            }
+        }
+        if (req.getEmail() != null) {
+            String newEmail = req.getEmail().trim();
+            if (!newEmail.equalsIgnoreCase(user.getEmail())) {
+                Optional<User> existing = repo.findByEmailIgnoreCase(newEmail);
+                if (existing.isPresent() && !existing.get().getId().equals(user.getId())) {
+                    throw new UserAlreadyExistsException("email already registered");
+                }
+                user.setEmail(newEmail);
+            }
+        }
+        if (req.getPassword() != null) {
+            String newHash = hashPassword(req.getPassword());
+            user.setPasswordHash(newHash);
+        }
+        return repo.save(user);
     }
 
     private String hashPassword(String password) {
