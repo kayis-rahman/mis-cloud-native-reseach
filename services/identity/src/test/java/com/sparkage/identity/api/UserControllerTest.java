@@ -9,6 +9,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
@@ -99,5 +100,32 @@ class UserControllerTest {
         mockMvc.perform(post("/users/login").contentType(MediaType.APPLICATION_JSON).content(badLogin))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.errors.auth").value("invalid credentials"));
+    }
+
+    @Test
+    void getUser_success_returns200() throws Exception {
+        String reg = "{\"username\":\"paul\",\"email\":\"paul@example.com\",\"password\":\"Password123\"}";
+        String id = objectMapper.readTree(
+                mockMvc.perform(post("/users/register").contentType(MediaType.APPLICATION_JSON).content(reg))
+                        .andExpect(status().isCreated())
+                        .andReturn()
+                        .getResponse()
+                        .getContentAsString()
+        ).get("id").asText();
+
+        mockMvc.perform(get("/users/" + id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(id))
+                .andExpect(jsonPath("$.username").value("paul"))
+                .andExpect(jsonPath("$.email").value("paul@example.com"))
+                .andExpect(jsonPath("$.createdAt").exists());
+    }
+
+    @Test
+    void getUser_notFound_returns404() throws Exception {
+        String randomId = java.util.UUID.randomUUID().toString();
+        mockMvc.perform(get("/users/" + randomId))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.errors.notFound").value("user not found"));
     }
 }

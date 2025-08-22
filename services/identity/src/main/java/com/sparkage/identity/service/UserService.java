@@ -19,6 +19,10 @@ public class UserService {
         this.repo = repo;
     }
 
+    public User getById(UUID userId) {
+        return repo.findById(userId).orElseThrow(() -> new NotFoundException("user not found"));
+    }
+
     public User register(UserRegistrationRequest req) {
         String normUsername = req.getUsername().trim();
         String normEmail = req.getEmail().trim();
@@ -78,5 +82,9 @@ public class UserService {
 
     public static class AuthFailedException extends RuntimeException {
         public AuthFailedException(String message) { super(message); }
+    }
+
+    public static class NotFoundException extends RuntimeException {
+        public NotFoundException(String message) { super(message); }
     }
 }

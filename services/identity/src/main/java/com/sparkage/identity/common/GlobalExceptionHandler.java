@@ -58,4 +58,15 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         body.put("errors", errors);
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body);
     }
+
+    @ExceptionHandler(UserService.NotFoundException.class)
+    public ResponseEntity<Object> handleNotFound(UserService.NotFoundException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", Instant.now().toString());
+        body.put("status", HttpStatus.NOT_FOUND.value());
+        Map<String, String> errors = new HashMap<>();
+        errors.put("notFound", ex.getMessage());
+        body.put("errors", errors);
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
+    }
 }

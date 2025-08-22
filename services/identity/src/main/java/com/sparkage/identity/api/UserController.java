@@ -39,4 +39,11 @@ public class UserController {
         com.sparkage.identity.api.dto.LoginResponse resp = new com.sparkage.identity.api.dto.LoginResponse(token, userResp);
         return ResponseEntity.ok(resp);
     }
+
+    @GetMapping("/{userId}")
+    public ResponseEntity<UserResponse> getById(@PathVariable java.util.UUID userId) {
+        User user = userService.getById(userId);
+        UserResponse response = new UserResponse(user.getId(), user.getUsername(), user.getEmail(), user.getCreatedAt());
+        return ResponseEntity.ok(response);
+    }
 }
