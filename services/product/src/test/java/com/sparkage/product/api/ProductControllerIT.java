@@ -31,11 +31,14 @@ class ProductControllerIT {
     @Autowired
     private ObjectMapper objectMapper;
 
+    private Long existingId;
+
     @BeforeEach
     void setup() {
         productRepository.deleteAll();
         productRepository.save(new Product("Phone X", "Great smartphone", "Electronics", new BigDecimal("799.99")));
-        productRepository.save(new Product("Laptop Pro", "High-end laptop", "Computers", new BigDecimal("1299.00")));
+        Product saved = productRepository.save(new Product("Laptop Pro", "High-end laptop", "Computers", new BigDecimal("1299.00")));
+        existingId = saved.getId();
         productRepository.save(new Product("Headphones", "Noise-cancelling headphones", "Electronics", new BigDecimal("199.99")));
         productRepository.save(new Product("Coffee Mug", "Ceramic mug", "Home", new BigDecimal("9.99")));
     }
@@ -68,5 +71,22 @@ class ProductControllerIT {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(2))
                 .andExpect(jsonPath("$[0].category").value("Electronics"));
+    }
+
+    @Test
+    void getProduct_byId_returnsDetails() throws Exception {
+        mockMvc.perform(get("/products/" + existingId).accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(existingId))
+                .andExpect(jsonPath("$.name").value("Laptop Pro"))
+                .andExpect(jsonPath("$.description").value("High-end laptop"))
+                .andExpect(jsonPath("$.category").value("Computers"))
+                .andExpect(jsonPath("$.price").value(1299.00));
+    }
+
+    @Test
+    void getProduct_notFound_returns404() throws Exception {
+        mockMvc.perform(get("/products/999999").accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNotFound());
     }
 }
