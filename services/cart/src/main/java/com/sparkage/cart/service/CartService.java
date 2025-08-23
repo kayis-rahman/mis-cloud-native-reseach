@@ -60,6 +60,15 @@ public class CartService {
         return cart;
     }
 
+    public synchronized Cart clearCart(Long userId) {
+        if (userId == null) throw new IllegalArgumentException("userId cannot be null");
+        Cart cart = carts.get(userId);
+        if (cart == null) {
+            return new Cart(userId);
+        }
+        cart.getItems().clear();
+        return cart;
+    }
 
     public Cart getCart(Long userId) {
         return carts.getOrDefault(userId, new Cart(userId));

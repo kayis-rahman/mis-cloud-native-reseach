@@ -133,4 +133,28 @@ class CartControllerIT {
         mockMvc.perform(delete("/carts/11/items/999"))
                 .andExpect(status().isNotFound());
     }
+
+    @Test
+    void clear_cart_endpoint_clearsCart_and_nonExistingReturnsEmpty() throws Exception {
+        // Add items then clear
+        mockMvc.perform(post("/carts/20/items").contentType(MediaType.APPLICATION_JSON).content("{\n  \"productId\": 1,\n  \"quantity\": 5\n}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(1));
+
+        mockMvc.perform(post("/carts/20/clear"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(0));
+
+        // Clearing a cart that doesn't exist should still return empty
+        mockMvc.perform(post("/carts/21/clear"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value(21))
+                .andExpect(jsonPath("$.items.length()").value(0));
+
+        // And GET should confirm it stays empty
+        mockMvc.perform(get("/carts/20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value(20))
+                .andExpect(jsonPath("$.items.length()").value(0));
+    }
 }

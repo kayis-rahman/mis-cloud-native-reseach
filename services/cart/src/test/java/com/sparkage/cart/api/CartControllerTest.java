@@ -62,6 +62,18 @@ class CartControllerTest {
     }
 
     @Test
+    void clearCart_success_returnsEmptyCart() throws Exception {
+        Cart empty = new Cart(9L);
+        empty.setItems(Collections.emptyList());
+        Mockito.when(cartService.clearCart(9L)).thenReturn(empty);
+
+        mockMvc.perform(post("/carts/9/clear"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value(9))
+                .andExpect(jsonPath("$.items.length()").value(0));
+    }
+
+    @Test
     void updateQuantity_success_returnsUpdatedCart() throws Exception {
         Cart cart = new Cart(2L);
         cart.setItems(Arrays.asList(new CartItem(50L, 7)));

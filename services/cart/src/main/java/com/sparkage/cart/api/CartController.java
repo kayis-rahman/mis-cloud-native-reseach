@@ -33,6 +33,12 @@ public class CartController {
         return ResponseEntity.ok(toResponse(updated));
     }
 
+    @PostMapping(path = "/{userId}/clear")
+    public ResponseEntity<CartResponse> clearCart(@PathVariable("userId") Long userId) {
+        Cart cleared = cartService.clearCart(userId);
+        return ResponseEntity.ok(toResponse(cleared));
+    }
+
     @PutMapping(path = "/{userId}/items/{itemId}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<CartResponse> updateItemQuantity(@PathVariable("userId") Long userId,
                                                            @PathVariable("itemId") Long itemId,

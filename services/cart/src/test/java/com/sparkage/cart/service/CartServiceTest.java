@@ -61,4 +61,16 @@ class CartServiceTest {
         assertEquals(0, afterRemove.getItems().size());
         assertThrows(CartService.NotFoundException.class, () -> cartService.removeItem(4L, 55L));
     }
+
+    @Test
+    void clearCart_emptiesExistingCart_and_handlesMissingCart() {
+        cartService.addItem(5L, 77L, 3);
+        Cart cleared = cartService.clearCart(5L);
+        assertEquals(5L, cleared.getUserId());
+        assertEquals(0, cleared.getItems().size());
+
+        Cart clearedMissing = cartService.clearCart(6L);
+        assertEquals(6L, clearedMissing.getUserId());
+        assertEquals(0, clearedMissing.getItems().size());
+    }
 }
