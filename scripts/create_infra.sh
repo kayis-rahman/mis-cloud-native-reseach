@@ -21,9 +21,26 @@ terraform apply -auto-approve \
 
 # Export kubeconfig
 echo "[INFO] Fetching GKE credentials"
-gcloud container clusters get-credentials $(terraform output -raw cluster_name) \
-  --region $(terraform output -raw cluster_location) \
-  --project $(terraform output -raw project_id)
+# Try to read terraform outputs, but fall back to env vars/defaults if missing
+set +e
+CLUSTER_NAME=$(terraform output -raw cluster_name 2>/dev/null)
+CLUSTER_LOC=$(terraform output -raw cluster_location 2>/dev/null)
+PROJECT_OUT=$(terraform output -raw project_id 2>/dev/null)
+set -e
+
+# Fallbacks
+CLUSTER_NAME=${CLUSTER_NAME:-mis-cloud-native-gke}
+CLUSTER_LOC=${CLUSTER_LOC:-${TF_VAR_gcp_region:-us-central1}}
+PROJECT_OUT=${PROJECT_OUT:-${TF_VAR_gcp_project_id}}
+
+if [[ -z "$PROJECT_OUT" ]]; then
+  echo "[ERROR] Project id not found in outputs and TF_VAR_gcp_project_id not set" >&2
+  exit 1
+fi
+
+gcloud container clusters get-credentials "$CLUSTER_NAME" \
+  --region "$CLUSTER_LOC" \
+  --project "$PROJECT_OUT"
 
 kubectl get nodes -o wide || true
 

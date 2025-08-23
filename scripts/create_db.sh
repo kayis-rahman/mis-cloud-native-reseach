@@ -11,6 +11,19 @@ cd "$ROOT_DIR/terraform"
 echo "[INFO] Initializing Terraform"
 terraform init -input=false
 
+# Fetch kube credentials (best effort) so kubernetes provider can create secrets
+if command -v gcloud >/dev/null 2>&1; then
+  echo "[INFO] Fetching GKE credentials (best effort)"
+  set +e
+  CLUSTER_NAME=$(terraform output -raw cluster_name 2>/dev/null)
+  CLUSTER_LOC=$(terraform output -raw cluster_location 2>/dev/null)
+  PROJECT_OUT=$(terraform output -raw project_id 2>/dev/null)
+  if [[ -n "$CLUSTER_NAME" && -n "$CLUSTER_LOC" ]]; then
+    gcloud container clusters get-credentials "$CLUSTER_NAME" --region "$CLUSTER_LOC" --project "${PROJECT_OUT:-$TF_VAR_gcp_project_id}" >/dev/null 2>&1
+  fi
+  set -e
+fi
+
 echo "[INFO] Applying DB resources (Cloud SQL + databases + secret)"
 terraform apply -auto-approve \
   -target=random_password.db \
@@ -23,7 +36,10 @@ terraform apply -auto-approve \
   -target=google_sql_database.db_cart \
   -target=google_sql_database.db_order \
   -target=google_sql_database.db_payment \
-  -target=google_sql_user.db
+  -target=google_sql_user.db \
+  -target=google_secret_manager_secret.identity_db_config \
+  -target=google_secret_manager_secret_version.identity_db_config \
+  -target=kubernetes_secret.db_service
 
 terraform output -raw db_public_ip || true
 
