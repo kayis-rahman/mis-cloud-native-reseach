@@ -5,6 +5,7 @@ import com.sparkage.payment.api.dto.PaymentResponse;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -52,5 +53,27 @@ class PaymentProcessorServiceTest {
 
         PaymentResponse resp = svc.process(req);
         assertEquals("DECLINED", resp.getStatus());
+    }
+
+    @Test
+    void getById_returnsStoredResponse_afterProcess() {
+        PaymentProcessorService svc = new PaymentProcessorService();
+        PaymentRequest req = new PaymentRequest();
+        req.setOrderId(77L);
+        req.setPaymentMethod("WALLET");
+        req.setAmount(new BigDecimal("20.00"));
+        req.setPaymentDetails("tok");
+
+        PaymentResponse resp = svc.process(req);
+        Optional<PaymentResponse> found = svc.getById(resp.getTransactionId());
+        assertTrue(found.isPresent());
+        assertEquals(resp.getTransactionId(), found.get().getTransactionId());
+        assertEquals(77L, found.get().getOrderId());
+    }
+
+    @Test
+    void getById_unknown_returnsEmpty() {
+        PaymentProcessorService svc = new PaymentProcessorService();
+        assertTrue(svc.getById("does-not-exist").isEmpty());
     }
 }

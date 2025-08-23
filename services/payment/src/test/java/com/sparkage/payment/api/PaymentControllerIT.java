@@ -1,5 +1,6 @@
 package com.sparkage.payment.api;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,7 +9,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -57,5 +60,39 @@ class PaymentControllerIT {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(invalid))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void get_payment_by_id_returns_details_after_post() throws Exception {
+        String json = "{" +
+                "\"orderId\": 2002," +
+                "\"paymentMethod\": \"WALLET\"," +
+                "\"amount\": 19.99," +
+                "\"paymentDetails\": \"tok_get_1\"" +
+                "}";
+
+        MvcResult result = mockMvc.perform(post("/payments")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        JsonNode node = objectMapper.readTree(result.getResponse().getContentAsString());
+        String paymentId = node.get("transactionId").asText();
+
+        mockMvc.perform(get("/payments/" + paymentId).accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.transactionId").value(paymentId))
+                .andExpect(jsonPath("$.orderId").value(2002))
+                .andExpect(jsonPath("$.paymentMethod").value("WALLET"))
+                .andExpect(jsonPath("$.amount").value(19.99))
+                .andExpect(jsonPath("$.status").exists())
+                .andExpect(jsonPath("$.processedAt").exists());
+    }
+
+    @Test
+    void get_unknown_payment_returns404() throws Exception {
+        mockMvc.perform(get("/payments/unknown-id"))
+                .andExpect(status().isNotFound());
     }
 }
