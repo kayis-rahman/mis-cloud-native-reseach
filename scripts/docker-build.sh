@@ -8,9 +8,9 @@ set -euo pipefail
 #  - Docker installed and running
 #
 # Usage examples:
-#  SERVICE=identity ./scripts/build_push_ghcr.sh
-#  SERVICE=identity TAG=v0.1.0 ./scripts/build_push_ghcr.sh
-#  SERVICE=identity IMAGE_NAME=identity-service TAG=latest ./scripts/build_push_ghcr.sh
+#  SERVICE=identity ./scripts/docker-build.sh
+#  SERVICE=identity TAG=v0.1.0 ./scripts/docker-build.sh
+#  SERVICE=identity IMAGE_NAME=identity-service TAG=latest ./scripts/docker-build.sh
 #
 # Optional env vars:
 #  - SERVICE (default: identity) — one of: identity, cart, product, order, payment
@@ -47,6 +47,16 @@ echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_OWNER" --password-stdin
 
 echo "[INFO] Building image: $IMAGE"
 cd "$SERVICE_DIR"
+
+# Auto-detect ARM host and default to cross-building for linux/amd64 unless PLATFORM is explicitly set
+if [[ -z "${PLATFORM:-}" ]]; then
+  ARCH=$(uname -m || true)
+  if [[ "$ARCH" == "arm64" || "$ARCH" == "aarch64" ]]; then
+    PLATFORM="linux/amd64"
+    echo "[INFO] Detected ARM host ($ARCH); defaulting to cross-build for $PLATFORM"
+  fi
+fi
+
 if [[ -n "${PLATFORM:-}" ]]; then
   echo "[INFO] Using buildx for platform: $PLATFORM"
   # Buildx cross-build and push in one step (requires buildx and QEMU installed via Docker Desktop)
