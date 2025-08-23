@@ -1,0 +1,16 @@
+name: Service - Identity
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'services/identity/**'
+      - '.github/workflows/deploy-identity.yml'
+  workflow_dispatch:
+
+jobs:
+  call:
+    uses: ./.github/workflows/_reusable-build-deploy.yml
+    with:
+      service: identity
+      image_repository: ghcr.io/${{ github.repository_owner }}/identity

@@ -1,0 +1,7 @@
+apiVersion: v2
+name: mis-cloud-native
+version: 0.1.0
+description: Helm chart to deploy all microservices for MIS Cloud Native project
+kubeVersion: ">=1.22.0-0"
+type: application
+appVersion: "1.0.0"

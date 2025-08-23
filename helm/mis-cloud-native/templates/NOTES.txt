@@ -1,0 +1,18 @@
+This chart deploys the MIS Cloud Native microservices.
+
+To install/release named "mis":
+  helm install mis ./helm/mis-cloud-native
+
+To customize images, ports, replicas, or enable ingress, edit values.yaml or provide a custom values file:
+  helm install mis ./helm/mis-cloud-native -f my-values.yaml
+
+Services will be created as:
+  - Deployment: <release>-<serviceKey>
+  - Service:    <release>-<serviceKey>
+
+Default exposed ports (ClusterIP services):
+  identity: 9000
+  product:  9001
+  cart:     9002
+  order:    9003
+  payment:  9004

@@ -1,0 +1,54 @@
+{{- $global := .Values.global -}}
+{{- range $key, $svc := .Values.services }}
+{{- if $svc.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ printf "%s-%s" $.Release.Name $key | trunc 63 | trimSuffix "-" }}
+  labels:
+    {{- include "mis-cloud-native.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $key }}
+spec:
+  replicas: {{ $svc.replicaCount | default 1 }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ $.Release.Name }}
+      app.kubernetes.io/component: {{ $key }}
+  template:
+    metadata:
+      labels:
+        {{- include "mis-cloud-native.labels" $ | nindent 8 }}
+        app.kubernetes.io/component: {{ $key }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - name: {{ $svc.name | default $key }}
+          image: {{ include "mis-cloud-native.image" (dict "global" $global "image" $svc.image) }}
+          imagePullPolicy: {{ $global.imagePullPolicy | default "IfNotPresent" }}
+          ports:
+            - name: http
+              containerPort: {{ $svc.containerPort | default 8080 }}
+              protocol: TCP
+          env:
+            {{- range $svc.env }}
+            - name: {{ .name }}
+              value: {{ .value | quote }}
+            {{- end }}
+          readinessProbe:
+            httpGet:
+              path: {{ $svc.readinessProbe.path | default "/actuator/health" }}
+              port: http
+            initialDelaySeconds: {{ $svc.readinessProbe.initialDelaySeconds | default 10 }}
+            periodSeconds: {{ $svc.readinessProbe.periodSeconds | default 10 }}
+          livenessProbe:
+            httpGet:
+              path: {{ $svc.livenessProbe.path | default "/actuator/health" }}
+              port: http
+            initialDelaySeconds: {{ $svc.livenessProbe.initialDelaySeconds | default 20 }}
+            periodSeconds: {{ $svc.livenessProbe.periodSeconds | default 10 }}
+          resources:
+            {{- toYaml ($svc.resources | default dict) | nindent 12 }}
+---
+{{- end }}
+{{- end }}
