@@ -11,6 +11,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Instant;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -134,5 +136,46 @@ class OrderControllerTest {
 
         mockMvc.perform(get("/orders/999").accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void getOrdersByUser_returnsList() throws Exception {
+        Order o1 = new Order();
+        o1.setId(1L);
+        o1.setUserId(50L);
+        o1.setCartId(100L);
+        o1.setPaymentInfo("VISA");
+        o1.setShippingAddress("Addr1");
+        o1.setStatus("PENDING");
+        o1.setCreatedAt(Instant.parse("2025-03-01T00:00:00Z"));
+
+        Order o2 = new Order();
+        o2.setId(2L);
+        o2.setUserId(50L);
+        o2.setCartId(101L);
+        o2.setPaymentInfo("MC");
+        o2.setShippingAddress("Addr2");
+        o2.setStatus("CONFIRMED");
+        o2.setCreatedAt(Instant.parse("2025-03-02T00:00:00Z"));
+
+        Mockito.when(orderRepository.findByUserIdOrderByCreatedAtDesc(50L))
+                .thenReturn(Arrays.asList(o2, o1));
+
+        mockMvc.perform(get("/orders/user/50").accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].id").value(2))
+                .andExpect(jsonPath("$[1].id").value(1));
+    }
+
+    @Test
+    void getOrdersByUser_empty_returnsEmptyArray() throws Exception {
+        Mockito.when(orderRepository.findByUserIdOrderByCreatedAtDesc(999L))
+                .thenReturn(Collections.emptyList());
+
+        mockMvc.perform(get("/orders/user/999").accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(content().json("[]"));
     }
 }

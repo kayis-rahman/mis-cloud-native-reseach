@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.net.URI;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping(path = "/orders")
@@ -43,6 +45,12 @@ public class OrderController {
         Order o = repository.findById(orderId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "order not found"));
         return toResponse(o);
+    }
+
+    @GetMapping(path = "/user/{userId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public List<OrderResponse> getOrdersByUser(@PathVariable("userId") Long userId) {
+        List<Order> orders = repository.findByUserIdOrderByCreatedAtDesc(userId);
+        return orders.stream().map(this::toResponse).collect(Collectors.toList());
     }
 
     private OrderResponse toResponse(Order o) {

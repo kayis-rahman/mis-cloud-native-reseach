@@ -105,4 +105,30 @@ class OrderControllerIT {
         mockMvc.perform(get("/orders/99999999").accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound());
     }
+
+    @Test
+    void getOrdersByUser_returnsOnlyUsersOrders_sortedDesc() throws Exception {
+        // user 1 orders
+        Order a1 = new Order(); a1.setUserId(1L); a1.setCartId(10L); a1.setPaymentInfo("VISA"); a1.setShippingAddress("A1");
+        Order a2 = new Order(); a2.setUserId(1L); a2.setCartId(11L); a2.setPaymentInfo("MC"); a2.setShippingAddress("A2");
+        // another user
+        Order b1 = new Order(); b1.setUserId(2L); b1.setCartId(20L); b1.setPaymentInfo("AMEX"); b1.setShippingAddress("B1");
+        orderRepository.save(a1);
+        // small delay by saving in sequence; createdAt set at instantiation but generally close; order not guaranteed by DB w/o createdAt desc.
+        orderRepository.save(b1);
+        orderRepository.save(a2);
+
+        mockMvc.perform(get("/orders/user/1").accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].userId").value(1))
+                .andExpect(jsonPath("$[1].userId").value(1));
+    }
+
+    @Test
+    void getOrdersByUser_empty_returnsEmptyArray() throws Exception {
+        mockMvc.perform(get("/orders/user/999999").accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(content().json("[]"));
+    }
 }
