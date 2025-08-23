@@ -178,4 +178,39 @@ class OrderControllerTest {
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(content().json("[]"));
     }
+
+    @Test
+    void cancelOrder_success_updatesStatusToCancelled() throws Exception {
+        Order existing = new Order();
+        existing.setId(55L);
+        existing.setUserId(3L);
+        existing.setCartId(33L);
+        existing.setPaymentInfo("VISA");
+        existing.setShippingAddress("Addr");
+        existing.setStatus("PENDING");
+        existing.setCreatedAt(Instant.parse("2025-03-20T10:00:00Z"));
+        Mockito.when(orderRepository.findById(eq(55L))).thenReturn(Optional.of(existing));
+        Order cancelled = new Order();
+        cancelled.setId(55L);
+        cancelled.setUserId(3L);
+        cancelled.setCartId(33L);
+        cancelled.setPaymentInfo("VISA");
+        cancelled.setShippingAddress("Addr");
+        cancelled.setStatus("CANCELLED");
+        cancelled.setCreatedAt(existing.getCreatedAt());
+        Mockito.when(orderRepository.save(any(Order.class))).thenReturn(cancelled);
+
+        mockMvc.perform(post("/orders/55/cancel").accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(55))
+                .andExpect(jsonPath("$.status").value("CANCELLED"));
+    }
+
+    @Test
+    void cancelOrder_notFound_returns404() throws Exception {
+        Mockito.when(orderRepository.findById(eq(9999L))).thenReturn(Optional.empty());
+
+        mockMvc.perform(post("/orders/9999/cancel").accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNotFound());
+    }
 }

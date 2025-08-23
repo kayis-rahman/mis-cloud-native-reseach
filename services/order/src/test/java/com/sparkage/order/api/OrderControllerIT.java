@@ -131,4 +131,28 @@ class OrderControllerIT {
                 .andExpect(status().isOk())
                 .andExpect(content().json("[]"));
     }
+
+    @Test
+    void cancelOrder_success_updatesStatus_andPersists() throws Exception {
+        Order o = new Order();
+        o.setUserId(77L);
+        o.setCartId(888L);
+        o.setPaymentInfo("MC");
+        o.setShippingAddress("Some Addr");
+        Order saved = orderRepository.save(o);
+
+        mockMvc.perform(post("/orders/" + saved.getId() + "/cancel").accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(saved.getId()))
+                .andExpect(jsonPath("$.status").value("CANCELLED"));
+
+        Order reloaded = orderRepository.findById(saved.getId()).orElseThrow();
+        assertThat(reloaded.getStatus()).isEqualTo("CANCELLED");
+    }
+
+    @Test
+    void cancelOrder_notFound_returns404() throws Exception {
+        mockMvc.perform(post("/orders/123456789/cancel").accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNotFound());
+    }
 }

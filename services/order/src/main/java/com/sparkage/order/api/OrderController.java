@@ -53,6 +53,15 @@ public class OrderController {
         return orders.stream().map(this::toResponse).collect(Collectors.toList());
     }
 
+    @PostMapping(path = "/{orderId}/cancel", produces = MediaType.APPLICATION_JSON_VALUE)
+    public OrderResponse cancelOrder(@PathVariable("orderId") Long orderId) {
+        Order o = repository.findById(orderId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "order not found"));
+        o.setStatus("CANCELLED");
+        Order saved = repository.save(o);
+        return toResponse(saved);
+    }
+
     private OrderResponse toResponse(Order o) {
         return new OrderResponse(
                 o.getId(),
