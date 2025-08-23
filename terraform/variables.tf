@@ -4,20 +4,31 @@ variable "project_name" {
   default     = "mis-cloud-native"
 }
 
-variable "aws_region" {
-  description = "AWS region"
+variable "gcp_project_id" {
+  description = "GCP Project ID"
   type        = string
-  default     = "us-east-1"
 }
 
-variable "vpc_cidr" {
-  description = "CIDR block for VPC"
+variable "gcp_region" {
+  description = "GCP region"
+  type        = string
+  default     = "us-central1"
+}
+
+variable "gcp_zone" {
+  description = "GCP zone (for default node pool)"
+  type        = string
+  default     = "us-central1-a"
+}
+
+variable "network_cidr" {
+  description = "CIDR block for VPC network"
   type        = string
   default     = "10.0.0.0/16"
 }
 
-variable "eks_version" {
-  description = "Kubernetes version for EKS"
+variable "gke_version" {
+  description = "Kubernetes version for GKE (minor version, e.g., 1.29)"
   type        = string
   default     = "1.29"
 }
@@ -29,27 +40,28 @@ variable "db_name" {
 }
 
 variable "db_username" {
-  description = "Database master username"
+  description = "Database user"
   type        = string
   default     = "misadmin"
 }
 
 variable "db_password" {
-  description = "Database master password"
+  description = "Database user password (optional). If not set, a random password will be generated and stored in Secret Manager."
   type        = string
   sensitive   = true
+  default     = null
 }
 
-variable "db_instance_class" {
-  description = "RDS instance class"
+variable "db_tier" {
+  description = "Cloud SQL machine tier (db-f1-micro, db-g1-small, db-custom-1-3840, etc.)"
   type        = string
-  default     = "db.t3.micro"
+  default     = "db-f1-micro"
 }
 
-variable "db_engine_version" {
-  description = "PostgreSQL engine version"
+variable "db_version" {
+  description = "PostgreSQL version"
   type        = string
-  default     = "16.3"
+  default     = "POSTGRES_16"
 }
 
 variable "create_initial_helm" {
@@ -74,4 +86,16 @@ variable "service_images" {
     payment  = "ghcr.io/OWNER/payment:latest"
     product  = "ghcr.io/OWNER/product:latest"
   }
+}
+
+variable "db_secret_id" {
+  description = "Secret Manager secret ID to store the DB password"
+  type        = string
+  default     = "mis-cloud-native-db-password"
+}
+
+variable "enable_deletion_protection" {
+  description = "Enable deletion protection for critical resources (GKE cluster and Cloud SQL). Set to false before terraform destroy."
+  type        = bool
+  default     = true
 }
