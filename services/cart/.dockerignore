@@ -1,0 +1,18 @@
+# Ignore build output
+/target
+
+# Maven cache and wrappers (not needed in build context)
+.mvn/
+mvnw
+mvnw.cmd
+
+# VCS and IDE files
+.git
+.gitignore
+**/.idea
+**/.project
+**/.classpath
+**/.settings
+
+# OS files
+**/.DS_Store
