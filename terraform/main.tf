@@ -153,6 +153,32 @@ resource "google_sql_database" "db" {
   instance = google_sql_database_instance.postgres.name
 }
 
+# Additional databases per service for clearer separation
+resource "google_sql_database" "db_identity" {
+  name     = "identitydb"
+  instance = google_sql_database_instance.postgres.name
+}
+
+resource "google_sql_database" "db_product" {
+  name     = "productdb"
+  instance = google_sql_database_instance.postgres.name
+}
+
+resource "google_sql_database" "db_cart" {
+  name     = "cartdb"
+  instance = google_sql_database_instance.postgres.name
+}
+
+resource "google_sql_database" "db_order" {
+  name     = "orderdb"
+  instance = google_sql_database_instance.postgres.name
+}
+
+resource "google_sql_database" "db_payment" {
+  name     = "paymentdb"
+  instance = google_sql_database_instance.postgres.name
+}
+
 resource "google_sql_user" "db" {
   name     = var.db_username
   instance = google_sql_database_instance.postgres.name

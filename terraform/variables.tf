@@ -67,7 +67,7 @@ variable "db_version" {
 variable "create_initial_helm" {
   description = "Whether to create initial Helm release for services"
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "global_image_registry" {
@@ -99,3 +99,47 @@ variable "enable_deletion_protection" {
   type        = bool
   default     = true
 }
+
+variable "ghcr_owner" {
+  description = "GitHub owner (username/org) for GHCR auth secret"
+  type        = string
+  default     = ""
+}
+
+variable "ghcr_token_secret_id" {
+  description = "Secret Manager secret ID containing GHCR token (read:packages). If empty, GHCR secret will not be created."
+  type        = string
+  default     = ""
+}
+
+variable "k8s_namespace" {
+  description = "Kubernetes namespace for deploying services and secrets"
+  type        = string
+  default     = "default"
+}
+
+variable "k8s_generic_secrets" {
+  description = "Map of k8s_secret_name -> GCP Secret Manager secret_id to sync into Kubernetes as Opaque secrets (single 'value' key)."
+  type        = map(string)
+  default     = {}
+}
+
+variable "create_k8s_db_secrets" {
+  description = "Whether to create per-service Kubernetes Secrets (db-*) with SPRING_DATASOURCE_* values. Disable if you inject from Secret Manager via CSI/External Secrets."
+  type        = bool
+  default     = true
+}
+
+variable "create_ghcr_secret" {
+  description = "Whether to create the Secret Manager secret container for GHCR token (no versions)."
+  type        = bool
+  default     = true
+}
+
+variable "ghcr_token" {
+  description = "GHCR token (PAT with read:packages); if set, Terraform will create a Secret Manager version and sync to Kubernetes."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+

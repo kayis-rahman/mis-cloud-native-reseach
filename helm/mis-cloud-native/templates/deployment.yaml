@@ -20,20 +20,20 @@ spec:
         {{- include "mis-cloud-native.labels" $ | nindent 8 }}
         app.kubernetes.io/component: {{ $key }}
     spec:
-      securityContext:
-        runAsNonRoot: true
       containers:
-        - name: {{ $svc.name | default $key }}
+        - name: {{ $key }}
           image: {{ include "mis-cloud-native.image" (dict "global" $global "image" $svc.image) }}
           imagePullPolicy: {{ $global.imagePullPolicy | default "IfNotPresent" }}
           ports:
             - name: http
               containerPort: {{ $svc.containerPort | default 8080 }}
               protocol: TCP
+          envFrom:
+            - secretRef:
+                name: {{ printf "db-%s" $key }}
           env:
             {{- range $svc.env }}
-            - name: {{ .name }}
-              value: {{ .value | quote }}
+            {{- toYaml . | nindent 12 }}
             {{- end }}
           readinessProbe:
             httpGet:
@@ -47,6 +47,8 @@ spec:
               port: http
             initialDelaySeconds: {{ $svc.livenessProbe.initialDelaySeconds | default 20 }}
             periodSeconds: {{ $svc.livenessProbe.periodSeconds | default 10 }}
+          securityContext:
+            allowPrivilegeEscalation: false
           resources:
             {{- toYaml ($svc.resources | default dict) | nindent 12 }}
 ---
