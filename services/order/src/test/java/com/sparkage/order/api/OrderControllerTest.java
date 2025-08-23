@@ -11,9 +11,12 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Instant;
+import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(OrderController.class)
@@ -100,5 +103,36 @@ class OrderControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(header().string("Location", "/orders/11"))
                 .andExpect(jsonPath("$.status").value("CONFIRMED"));
+    }
+
+    @Test
+    void getOrder_success_returnsDetails() throws Exception {
+        Order found = new Order();
+        found.setId(77L);
+        found.setUserId(9L);
+        found.setCartId(8L);
+        found.setPaymentInfo("MC");
+        found.setShippingAddress("Somewhere");
+        found.setStatus("PENDING");
+        found.setCreatedAt(Instant.parse("2025-02-02T12:00:00Z"));
+        Mockito.when(orderRepository.findById(eq(77L))).thenReturn(Optional.of(found));
+
+        mockMvc.perform(get("/orders/77").accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(77))
+                .andExpect(jsonPath("$.userId").value(9))
+                .andExpect(jsonPath("$.cartId").value(8))
+                .andExpect(jsonPath("$.paymentInfo").value("MC"))
+                .andExpect(jsonPath("$.shippingAddress").value("Somewhere"))
+                .andExpect(jsonPath("$.status").value("PENDING"))
+                .andExpect(jsonPath("$.createdAt").value("2025-02-02T12:00:00Z"));
+    }
+
+    @Test
+    void getOrder_notFound_returns404() throws Exception {
+        Mockito.when(orderRepository.findById(eq(999L))).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/orders/999").accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNotFound());
     }
 }

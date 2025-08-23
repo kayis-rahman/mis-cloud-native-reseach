@@ -14,6 +14,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
@@ -78,5 +79,30 @@ class OrderControllerIT {
                 .andExpect(status().isBadRequest());
 
         assertThat(orderRepository.count()).isEqualTo(0);
+    }
+
+    @Test
+    void getOrder_byId_returnsDetails() throws Exception {
+        Order o = new Order();
+        o.setUserId(42L);
+        o.setCartId(777L);
+        o.setPaymentInfo("VISA");
+        o.setShippingAddress("123 Test Ave");
+        Order saved = orderRepository.save(o);
+
+        mockMvc.perform(get("/orders/" + saved.getId()).accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(saved.getId()))
+                .andExpect(jsonPath("$.userId").value(42))
+                .andExpect(jsonPath("$.cartId").value(777))
+                .andExpect(jsonPath("$.paymentInfo").value("VISA"))
+                .andExpect(jsonPath("$.shippingAddress").value("123 Test Ave"))
+                .andExpect(jsonPath("$.status").value("PENDING"));
+    }
+
+    @Test
+    void getOrder_notFound_returns404() throws Exception {
+        mockMvc.perform(get("/orders/99999999").accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNotFound());
     }
 }

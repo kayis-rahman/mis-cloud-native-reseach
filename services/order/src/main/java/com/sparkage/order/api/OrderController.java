@@ -5,9 +5,11 @@ import com.sparkage.order.api.dto.OrderResponse;
 import com.sparkage.order.model.Order;
 import com.sparkage.order.service.OrderRepository;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.net.URI;
 
@@ -34,6 +36,13 @@ public class OrderController {
         Order saved = repository.save(order);
         OrderResponse body = toResponse(saved);
         return ResponseEntity.created(URI.create("/orders/" + saved.getId())).body(body);
+    }
+
+    @GetMapping(path = "/{orderId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public OrderResponse getOrder(@PathVariable("orderId") Long orderId) {
+        Order o = repository.findById(orderId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "order not found"));
+        return toResponse(o);
     }
 
     private OrderResponse toResponse(Order o) {
