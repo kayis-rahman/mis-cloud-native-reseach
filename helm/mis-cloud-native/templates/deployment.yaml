@@ -21,7 +21,7 @@ spec:
         app.kubernetes.io/component: {{ $key }}
     spec:
       imagePullSecrets:
-        - name: ghcr-secret
+        - name: ghcr-creds
       containers:
         - name: {{ $key }}
           image: {{ $svc.image }}
