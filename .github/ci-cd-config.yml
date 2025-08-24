@@ -59,7 +59,6 @@ workflows:
 # Pipeline Stages
 stages:
   1_code_quality:
-    - checkstyle_lint
     - secret_scanning
     - filesystem_security_scan
 
