@@ -476,9 +476,12 @@ jobs:
         
         # Set up proper registry variables
         REPO_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+        export GHCR_OWNER="$REPO_OWNER"
         export GLOBAL_REGISTRY="${{ env.REGISTRY }}/${REPO_OWNER}"
         
-        echo "🚀 Deploying services with registry: $GLOBAL_REGISTRY"
+        echo "🚀 Deploying services with:"
+        echo "  GHCR_OWNER: $GHCR_OWNER"
+        echo "  GLOBAL_REGISTRY: $GLOBAL_REGISTRY"
         
         if [[ "${{ github.event.inputs.services }}" != "" && "${{ github.event.inputs.services }}" != "all" ]]; then
           # Deploy specific services
