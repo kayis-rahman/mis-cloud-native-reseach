@@ -32,9 +32,5 @@ resource "google_secret_manager_secret_version" "ghcr_pat" {
   lifecycle {
     # Only recreate if the actual secret data changes
     create_before_destroy = true
-    # Replace the version if the secret data changes
-    replace_triggered_by = [
-      var.ghcr_token
-    ]
   }
 }
