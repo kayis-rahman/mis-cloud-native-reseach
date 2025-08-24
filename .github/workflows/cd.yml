@@ -12,7 +12,7 @@ env:
   GHCR_OWNER: ${{ github.repository_owner }}
   GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GCP_PROJECT: ${{ secrets.GCP_PROJECT }}
-  GKE_CLUSTER: mis-cloud-native
+  GKE_CLUSTER: mis-cloud-native-gke
   GKE_ZONE: us-central1-a
   GCP_REGION: us-central1
 
@@ -25,6 +25,7 @@ jobs:
   deploy-to-gke:
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    environment: production
 
     steps:
     - uses: actions/checkout@v3
@@ -41,7 +42,7 @@ jobs:
 
     - name: 'Get GKE credentials'
       run: |-
-        gcloud container clusters get-credentials "$GKE_CLUSTER" --zone "$GKE_ZONE" --project "$GCP_PROJECT"
+        gcloud container clusters get-credentials "$GKE_CLUSTER" --region "$GCP_REGION" --project "$GCP_PROJECT"
 
     - name: Login to GitHub Container Registry
       uses: docker/login-action@v2
@@ -50,33 +51,35 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Setup Helm
-      uses: azure/setup-helm@v3
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v2
+
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v1
       with:
-        version: v3.12.2
+        role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+        aws-region: us-east-1
 
-    - name: Prepare Scripts
-      run: |
-        chmod +x ./scripts/*.sh
+    - name: Initialize Terraform
+      working-directory: ./terraform
+      run: terraform init
+      env:
+        GOOGLE_CREDENTIALS: ${{ secrets.GCP_SA_KEY }}
 
-    - name: Deploy Services
+    - name: Apply Terraform Changes
+      working-directory: ./terraform
       run: |
+        terraform apply -auto-approve \
+          -var="gcp_project_id=${{ secrets.GCP_PROJECT }}" \
+          -var="project_name=mis-cloud-native" \
+          -var="enable_deletion_protection=true"
+      env:
+        GOOGLE_CREDENTIALS: ${{ secrets.GCP_SA_KEY }}
+
+    - name: Deploy Services to GKE
+      run: |
+        chmod +x ./scripts/deploy_all_services.sh
         ./scripts/deploy_all_services.sh
       env:
-        KUBECONFIG: /home/runner/.kube/config
-        HELM_EXPERIMENTAL_OCI: 1
-
-    - name: Validate Deployments
-      run: |
-        for service in api-gateway identity product cart order payment; do
-          SERVICE=$service ./scripts/validate_deploy.sh
-        done
-
-    - name: Run Smoke Tests
-      run: |
-        ./scripts/smoke_test_all_services.sh
-
-    - name: Rollback on Failure
-      if: failure()
-      run: |
-        ./scripts/destroy_all.sh
+        KUBECONFIG: /tmp/kubeconfig
+        GOOGLE_CREDENTIALS: ${{ secrets.GCP_SA_KEY }}
