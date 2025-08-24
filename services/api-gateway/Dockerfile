@@ -13,7 +13,7 @@ RUN --mount=type=cache,target=/root/.m2 mvn -q -e -DskipTests=false test
 FROM builder AS package
 RUN --mount=type=cache,target=/root/.m2 mvn -q -e -DskipTests package
 
-FROM eclipse-temurin:17-jre-alpine
+FROM --platform=linux/amd64 eclipse-temurin:17-jre-alpine
 ENV JAVA_OPTS="-XX:MaxRAMPercentage=75 -XX:+UseContainerSupport -Djava.security.egd=file:/dev/./urandom"
 WORKDIR /app
 RUN addgroup -S spring && adduser -S spring -G spring

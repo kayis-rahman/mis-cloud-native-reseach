@@ -79,3 +79,9 @@ override.tf.json
 helm/**/*.tgz
 helm/**/Chart.lock
 gcp-sa-key.json
+
+# Local GitHub Actions configuration
+.secrets
+.actrc
+target/
+*.jar
