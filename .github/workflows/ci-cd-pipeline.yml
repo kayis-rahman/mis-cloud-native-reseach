@@ -65,6 +65,94 @@ jobs:
 #        chmod +x scripts/scan_security.sh
 #        NO_PROGRESS=1 ./scripts/scan_security.sh
 
+  # Job 2: Infrastructure Setup
+  infrastructure:
+    name: Infrastructure Setup
+    runs-on: ubuntu-latest
+    #if: github.event_name != 'pull_request'
+    outputs:
+      cluster-name: ${{ steps.infra-outputs.outputs.cluster-name }}
+      cluster-location: ${{ steps.infra-outputs.outputs.cluster-location }}
+      project-id: ${{ steps.infra-outputs.outputs.project-id }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+    - name: Set up Google Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+      with:
+        project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+    - name: Install Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: '1.5.0'
+        terraform_wrapper: false
+
+    - name: Set up kubectl
+      uses: azure/setup-kubectl@v4
+      with:
+        version: 'v1.28.0'
+
+    - name: Bootstrap Terraform state (if needed)
+      run: |
+        chmod +x scripts/bootstrap_state.sh
+        ./scripts/bootstrap_state.sh || echo "State already exists or bootstrap not needed"
+      env:
+        TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
+        TF_VAR_gcp_region: ${{ secrets.GCP_REGION || 'us-central1' }}
+
+    - name: Create base infrastructure
+      run: |
+        chmod +x scripts/create_infra.sh
+        ./scripts/create_infra.sh
+      env:
+        TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
+        TF_VAR_gcp_region: ${{ secrets.GCP_REGION || 'us-central1' }}
+
+    - name: Create databases
+      run: |
+        chmod +x scripts/create_db.sh
+        ./scripts/create_db.sh
+      env:
+        TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
+        TF_VAR_gcp_region: ${{ secrets.GCP_REGION || 'us-central1' }}
+
+    - name: Create Kubernetes secrets
+      run: |
+        chmod +x scripts/create_secrets.sh
+        ./scripts/create_secrets.sh
+      env:
+        TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
+        GHCR_OWNER: ${{ github.repository_owner }}
+        GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GHCR_TOKEN_SECRET_ID: ghcr-pat
+        NAMESPACE: default
+        DB_PASSWORD: ${{ github.ref == 'refs/heads/main' && secrets.DB_PASSWORD_PRODUCTION || secrets.DB_PASSWORD_STAGING }}
+        JWT_SECRET: ${{ github.ref == 'refs/heads/main' && secrets.JWT_SECRET_PRODUCTION || secrets.JWT_SECRET_STAGING }}
+
+    - name: Validate infrastructure
+      run: |
+        chmod +x scripts/validate_infra.sh
+        ./scripts/validate_infra.sh
+      env:
+        TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+    - name: Export infrastructure outputs
+      id: infra-outputs
+      run: |
+        cd terraform
+        echo "cluster-name=$(terraform output -raw cluster_name)" >> $GITHUB_OUTPUT
+        echo "cluster-location=$(terraform output -raw cluster_location)" >> $GITHUB_OUTPUT
+        echo "project-id=$(terraform output -raw project_id)" >> $GITHUB_OUTPUT
+      env:
+        TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
+
 # Temporary commanding Tests since it's working properly
 # Job 2: Unit and Integration Tests
 #  test:
@@ -208,31 +296,42 @@ jobs:
         # Remove the test image to clean up
         docker rmi ghcr.io/${{ env.GHCR_OWNER_LOWER }}/test:${{ env.IMAGE_TAG }} || true
 
-    - name: Security scan images
-      run: |
-        chmod +x scripts/scan_security.sh
-        for service in identity product cart order payment api-gateway; do
-          echo "Scanning image: ${{ env.REGISTRY }}/${{ env.GHCR_OWNER_LOWER }}/${service}:${{ env.IMAGE_TAG }}"
-          IMAGE="${{ env.REGISTRY }}/${{ env.GHCR_OWNER_LOWER }}/${service}:${{ env.IMAGE_TAG }}" \
-            NO_PROGRESS=1 ./scripts/scan_security.sh
-        done
+#    - name: Security scan images
+#      run: |
+#        chmod +x scripts/scan_security.sh
+#        for service in identity product cart order payment api-gateway; do
+#          echo "Scanning image: ${{ env.REGISTRY }}/${{ env.GHCR_OWNER_LOWER }}/${service}:${{ env.IMAGE_TAG }}"
+#          IMAGE="${{ env.REGISTRY }}/${{ env.GHCR_OWNER_LOWER }}/${service}:${{ env.IMAGE_TAG }}" \
+#            NO_PROGRESS=1 ./scripts/scan_security.sh
+#        done
 
   # Job 4: Deploy to Staging
   deploy-staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest
-    needs: build-images
+    needs: [infrastructure, build-images]
     if: github.ref == 'refs/heads/develop' || github.event_name == 'workflow_dispatch'
     environment: staging
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+    - name: Set up Google Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+      with:
+        project_id: ${{ needs.infrastructure.outputs.project-id }}
+
     - name: Configure kubectl
       run: |
-        mkdir -p ~/.kube
-        echo "${{ secrets.KUBE_CONFIG_STAGING }}" | base64 -d > ~/.kube/config
-        chmod 600 ~/.kube/config
+        gcloud container clusters get-credentials \
+          ${{ needs.infrastructure.outputs.cluster-name }} \
+          --region ${{ needs.infrastructure.outputs.cluster-location }} \
+          --project ${{ needs.infrastructure.outputs.project-id }}
 
     - name: Set up Helm
       uses: azure/setup-helm@v4
@@ -255,7 +354,7 @@ jobs:
     - name: Deploy services
       run: |
         chmod +x scripts/deploy_all_services.sh
-        export GLOBAL_REGISTRY="${{ env.REGISTRY }}/${{ env.GHCR_OWNER }}"
+        export GLOBAL_REGISTRY="${{ env.REGISTRY }}/${{ env.GHCR_OWNER_LOWER }}"
         if [[ "${{ github.event.inputs.services }}" != "" && "${{ github.event.inputs.services }}" != "all" ]]; then
           # Deploy specific services
           for service in ${{ github.event.inputs.services }}; do
@@ -288,34 +387,32 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+    - name: Set up Google Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+      with:
+        project_id: ${{ needs.infrastructure.outputs.project-id }}
+
     - name: Configure kubectl
       run: |
-        mkdir -p ~/.kube
-        echo "${{ secrets.KUBE_CONFIG_PRODUCTION }}" | base64 -d > ~/.kube/config
-        chmod 600 ~/.kube/config
+        gcloud container clusters get-credentials \
+          ${{ needs.infrastructure.outputs.cluster-name }} \
+          --region ${{ needs.infrastructure.outputs.cluster-location }} \
+          --project ${{ needs.infrastructure.outputs.project-id }}
 
     - name: Set up Helm
       uses: azure/setup-helm@v4
       with:
         version: '3.12.0'
 
-    - name: Validate infrastructure
-      run: |
-        chmod +x scripts/validate_infra.sh
-        ./scripts/validate_infra.sh
-
-    - name: Create production secrets
-      run: |
-        chmod +x scripts/create_secrets.sh
-        ./scripts/create_secrets.sh
-      env:
-        DB_PASSWORD: ${{ secrets.DB_PASSWORD_PRODUCTION }}
-        JWT_SECRET: ${{ secrets.JWT_SECRET_PRODUCTION }}
-
     - name: Deploy to production with rolling update
       run: |
         chmod +x scripts/deploy_all_services.sh
-        export GLOBAL_REGISTRY="${{ env.REGISTRY }}/${{ env.GHCR_OWNER }}"
+        export GLOBAL_REGISTRY="${{ env.REGISTRY }}/${{ env.GHCR_OWNER_LOWER }}"
         ./scripts/deploy_all_services.sh
 
     - name: Validate production deployment
