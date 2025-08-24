@@ -22,6 +22,8 @@ out/
 # Keep wrapper files tracked; ignore general build outputs
 !/.mvn/wrapper/maven-wrapper.jar
 !/.mvn/wrapper/maven-wrapper.properties
+
+**/.m2
 # Build outputs
 **/target/
 

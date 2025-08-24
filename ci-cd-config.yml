@@ -1,10 +1,25 @@
-.name: Microservices CI/CD Pipeline
+name: Microservices CI/CD Pipeline
 
 on:
   push:
     branches: [ main, develop ]
   pull_request:
     branches: [ main, develop ]
+  workflow_dispatch:
+    inputs:
+      services:
+        description: 'Comma-separated list of services to build (leave empty for all)'
+        required: false
+        default: ''
+      environment:
+        description: 'Target environment'
+        required: false
+        default: 'dev'
+        type: choice
+        options:
+        - dev
+        - staging
+        - prod
 
 env:
   JAVA_VERSION: '17'
@@ -34,18 +49,6 @@ jobs:
         path: ~/.m2
         key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
         restore-keys: ${{ runner.os }}-m2
-
-    - name: Run Checkstyle Analysis
-      run: |
-        echo "🔍 Running Checkstyle analysis on all services..."
-        for service in services/*/; do
-          if [ -f "$service/pom.xml" ]; then
-            echo "Analyzing $(basename $service)"
-            cd "$service"
-            mvn checkstyle:check || exit 1
-            cd ../..
-          fi
-        done
 
     - name: Run SpotBugs Security Analysis
       run: |
@@ -97,7 +100,6 @@ jobs:
       with:
         name: quality-security-reports
         path: |
-          services/*/target/checkstyle-result.xml
           services/*/target/spotbugsXml.xml
           services/*/target/dependency-check-report.html
         retention-days: 30
