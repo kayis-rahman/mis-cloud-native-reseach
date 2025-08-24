@@ -30,7 +30,6 @@ terraform apply -auto-approve \
   -target=google_secret_manager_secret.db_password \
   -target=google_secret_manager_secret_version.db_password \
   -target=google_sql_database_instance.postgres \
-  -target=google_sql_database.db \
   -target=google_sql_database.db_identity \
   -target=google_sql_database.db_product \
   -target=google_sql_database.db_cart \
@@ -39,6 +38,14 @@ terraform apply -auto-approve \
   -target=google_sql_user.db \
   -target=google_secret_manager_secret.identity_db_config \
   -target=google_secret_manager_secret_version.identity_db_config \
+  -target=google_secret_manager_secret.product_db_config \
+  -target=google_secret_manager_secret_version.product_db_config \
+  -target=google_secret_manager_secret.cart_db_config \
+  -target=google_secret_manager_secret_version.cart_db_config \
+  -target=google_secret_manager_secret.order_db_config \
+  -target=google_secret_manager_secret_version.order_db_config \
+  -target=google_secret_manager_secret.payment_db_config \
+  -target=google_secret_manager_secret_version.payment_db_config \
   -target=kubernetes_secret.db_service
 
 terraform output -raw db_public_ip || true

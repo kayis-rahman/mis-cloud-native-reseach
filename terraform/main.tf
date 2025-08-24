@@ -148,10 +148,6 @@ resource "google_sql_database_instance" "postgres" {
 }
 
 # Database and user
-resource "google_sql_database" "db" {
-  name     = var.db_name
-  instance = google_sql_database_instance.postgres.name
-}
 
 # Additional databases per service for clearer separation
 resource "google_sql_database" "db_identity" {

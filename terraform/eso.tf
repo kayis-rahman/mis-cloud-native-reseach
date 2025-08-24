@@ -126,3 +126,155 @@ EOT
     null_resource.eso_secretstore,
   ]
 }
+
+# ExternalSecret for product-db-config -> db-product
+resource "null_resource" "eso_externalsecret_product" {
+  count = var.enable_eso ? 1 : 0
+  provisioner "local-exec" {
+    command = <<EOT
+kubectl apply -f - <<EOF
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: db-product
+  namespace: ${var.k8s_namespace}
+spec:
+  refreshInterval: 1m
+  secretStoreRef:
+    name: gcpsm-store
+    kind: SecretStore
+  target:
+    name: db-product
+    creationPolicy: Owner
+  data:
+    - secretKey: SPRING_DATASOURCE_URL
+      remoteRef:
+        key: product-db-config
+        property: SPRING_DATASOURCE_URL
+    - secretKey: SPRING_DATASOURCE_USERNAME
+      remoteRef:
+        key: product-db-config
+        property: SPRING_DATASOURCE_USERNAME
+    - secretKey: SPRING_DATASOURCE_PASSWORD
+      remoteRef:
+        key: product-db-config
+        property: SPRING_DATASOURCE_PASSWORD
+EOF
+EOT
+  }
+  depends_on = [null_resource.eso_secretstore]
+}
+
+# ExternalSecret for cart-db-config -> db-cart
+resource "null_resource" "eso_externalsecret_cart" {
+  count = var.enable_eso ? 1 : 0
+  provisioner "local-exec" {
+    command = <<EOT
+kubectl apply -f - <<EOF
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: db-cart
+  namespace: ${var.k8s_namespace}
+spec:
+  refreshInterval: 1m
+  secretStoreRef:
+    name: gcpsm-store
+    kind: SecretStore
+  target:
+    name: db-cart
+    creationPolicy: Owner
+  data:
+    - secretKey: SPRING_DATASOURCE_URL
+      remoteRef:
+        key: cart-db-config
+        property: SPRING_DATASOURCE_URL
+    - secretKey: SPRING_DATASOURCE_USERNAME
+      remoteRef:
+        key: cart-db-config
+        property: SPRING_DATASOURCE_USERNAME
+    - secretKey: SPRING_DATASOURCE_PASSWORD
+      remoteRef:
+        key: cart-db-config
+        property: SPRING_DATASOURCE_PASSWORD
+EOF
+EOT
+  }
+  depends_on = [null_resource.eso_secretstore]
+}
+
+# ExternalSecret for order-db-config -> db-order
+resource "null_resource" "eso_externalsecret_order" {
+  count = var.enable_eso ? 1 : 0
+  provisioner "local-exec" {
+    command = <<EOT
+kubectl apply -f - <<EOF
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: db-order
+  namespace: ${var.k8s_namespace}
+spec:
+  refreshInterval: 1m
+  secretStoreRef:
+    name: gcpsm-store
+    kind: SecretStore
+  target:
+    name: db-order
+    creationPolicy: Owner
+  data:
+    - secretKey: SPRING_DATASOURCE_URL
+      remoteRef:
+        key: order-db-config
+        property: SPRING_DATASOURCE_URL
+    - secretKey: SPRING_DATASOURCE_USERNAME
+      remoteRef:
+        key: order-db-config
+        property: SPRING_DATASOURCE_USERNAME
+    - secretKey: SPRING_DATASOURCE_PASSWORD
+      remoteRef:
+        key: order-db-config
+        property: SPRING_DATASOURCE_PASSWORD
+EOF
+EOT
+  }
+  depends_on = [null_resource.eso_secretstore]
+}
+
+# ExternalSecret for payment-db-config -> db-payment
+resource "null_resource" "eso_externalsecret_payment" {
+  count = var.enable_eso ? 1 : 0
+  provisioner "local-exec" {
+    command = <<EOT
+kubectl apply -f - <<EOF
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: db-payment
+  namespace: ${var.k8s_namespace}
+spec:
+  refreshInterval: 1m
+  secretStoreRef:
+    name: gcpsm-store
+    kind: SecretStore
+  target:
+    name: db-payment
+    creationPolicy: Owner
+  data:
+    - secretKey: SPRING_DATASOURCE_URL
+      remoteRef:
+        key: payment-db-config
+        property: SPRING_DATASOURCE_URL
+    - secretKey: SPRING_DATASOURCE_USERNAME
+      remoteRef:
+        key: payment-db-config
+        property: SPRING_DATASOURCE_USERNAME
+    - secretKey: SPRING_DATASOURCE_PASSWORD
+      remoteRef:
+        key: payment-db-config
+        property: SPRING_DATASOURCE_PASSWORD
+EOF
+EOT
+  }
+  depends_on = [null_resource.eso_secretstore]
+}

@@ -21,8 +21,9 @@ locals {
 
 resource "kubernetes_secret" "db_service" {
   # If ESO is enabled, skip managing the identity DB secret here to avoid conflicts with ExternalSecret target
+  # If ESO is enabled, skip managing all per-service DB secrets here to avoid conflicts
   for_each = var.create_k8s_db_secrets ? (
-    var.enable_eso ? toset([for n in local.db_service_names : n if n != "identity"]) : toset(local.db_service_names)
+    var.enable_eso ? toset([]) : toset(local.db_service_names)
   ) : toset([])
 
   metadata {

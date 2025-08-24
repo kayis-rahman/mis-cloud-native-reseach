@@ -33,11 +33,6 @@ variable "gke_version" {
   default     = "1.29"
 }
 
-variable "db_name" {
-  description = "Database name"
-  type        = string
-  default     = "misdb"
-}
 
 variable "db_username" {
   description = "Database user"
