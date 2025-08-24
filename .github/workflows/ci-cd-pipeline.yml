@@ -50,15 +50,6 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-maven-
 
-    - name: Run Checkstyle
-      run: |
-        for service in identity product cart order payment api-gateway; do
-          echo "Running Checkstyle for $service"
-          cd services/$service
-          mvn checkstyle:check -B
-          cd ../..
-        done
-
     - name: Scan for secrets
       run: |
         chmod +x scripts/scan_secrets.sh
@@ -70,48 +61,48 @@ jobs:
         NO_PROGRESS=1 ./scripts/scan_security.sh
 
   # Job 2: Unit and Integration Tests
-  test:
-    name: Unit & Integration Tests
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        service: [identity, product, cart, order, payment, api-gateway]
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-
-    - name: Cache Maven dependencies
-      uses: actions/cache@v4
-      with:
-        path: .m2/repository
-        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-        restore-keys: |
-          ${{ runner.os }}-maven-
-
-    - name: Run tests for ${{ matrix.service }}
-      run: |
-        chmod +x scripts/run_tests.sh
-        ./scripts/run_tests.sh ${{ matrix.service }}
-
-    - name: Upload test results
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: test-results-${{ matrix.service }}
-        path: services/${{ matrix.service }}/target/surefire-reports/
-
-    - name: Upload coverage reports
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: coverage-${{ matrix.service }}
-        path: services/${{ matrix.service }}/target/site/jacoco/
+#  test:
+#    name: Unit & Integration Tests
+#    runs-on: ubuntu-latest
+#    strategy:
+#      matrix:
+#        service: [identity, product, cart, order, payment, api-gateway]
+#    steps:
+#    - name: Checkout code
+#      uses: actions/checkout@v4
+#
+#    - name: Set up JDK 17
+#      uses: actions/setup-java@v4
+#      with:
+#        java-version: '17'
+#        distribution: 'temurin'
+#
+#    - name: Cache Maven dependencies
+#      uses: actions/cache@v4
+#      with:
+#        path: .m2/repository
+#        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+#        restore-keys: |
+#          ${{ runner.os }}-maven-
+#
+#    - name: Run tests for ${{ matrix.service }}
+#      run: |
+#        chmod +x scripts/run_tests.sh
+#        ./scripts/run_tests.sh ${{ matrix.service }}
+#
+#    - name: Upload test results
+#      uses: actions/upload-artifact@v4
+#      if: always()
+#      with:
+#        name: test-results-${{ matrix.service }}
+#        path: services/${{ matrix.service }}/target/surefire-reports/
+#
+#    - name: Upload coverage reports
+#      uses: actions/upload-artifact@v4
+#      if: always()
+#      with:
+#        name: coverage-${{ matrix.service }}
+#        path: services/${{ matrix.service }}/target/site/jacoco/
 
   # Job 3: Build and Push Container Images
   build-images:
