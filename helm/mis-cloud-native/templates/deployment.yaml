@@ -6,7 +6,7 @@ kind: Deployment
 metadata:
   name: {{ printf "%s-%s" $.Release.Name $key | trunc 63 | trimSuffix "-" }}
   labels:
-    {{- include "mis-cloud-native.labels" $ | nindent 4 }}
+    app.kubernetes.io/instance: {{ $.Release.Name }}
     app.kubernetes.io/component: {{ $key }}
 spec:
   replicas: {{ $svc.replicaCount | default 1 }}
@@ -17,7 +17,7 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "mis-cloud-native.labels" $ | nindent 8 }}
+        app.kubernetes.io/instance: {{ $.Release.Name }}
         app.kubernetes.io/component: {{ $key }}
     spec:
       containers:
@@ -28,9 +28,11 @@ spec:
             - name: http
               containerPort: {{ $svc.containerPort | default 8080 }}
               protocol: TCP
+          {{- if $svc.usesDb }}
           envFrom:
             - secretRef:
                 name: {{ printf "db-%s" $key }}
+          {{- end }}
           env:
             {{- range $svc.env }}
             {{- toYaml . | nindent 12 }}
