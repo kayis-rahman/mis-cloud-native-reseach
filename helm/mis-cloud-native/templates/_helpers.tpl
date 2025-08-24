@@ -24,14 +24,3 @@ helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
 {{- define "mis-cloud-native.serviceLabels" -}}
 {{ include "mis-cloud-native.labels" . }}
 {{- end -}}
-
-{{- define "mis-cloud-native.image" -}}
-{{- $global := .global -}}
-{{- $image := .image -}}
-{{- $ghcrOwner := $global.ghcrOwner -}}
-{{- if $global.imageRegistry -}}
-{{- printf "%s/%s/%s" $global.imageRegistry $ghcrOwner $image -}}
-{{- else -}}
-{{- printf "%s/%s" $ghcrOwner $image -}}
-{{- end -}}
-{{- end -}}

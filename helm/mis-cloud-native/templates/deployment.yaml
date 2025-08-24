@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
         - name: {{ $key }}
-          image: {{ include "mis-cloud-native.image" (dict "global" $global "image" $svc.image) }}
+          image: {{ $svc.image }}
           imagePullPolicy: {{ $global.imagePullPolicy | default "IfNotPresent" }}
           ports:
             - name: http
