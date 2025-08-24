@@ -1,5 +1,5 @@
 # Multi-stage build for Identity Service
-FROM maven:3.9.8-eclipse-temurin-17-alpine AS builder
+FROM --platform=linux/amd64 maven:3.9.8-eclipse-temurin-17-alpine AS builder
 WORKDIR /workspace
 COPY pom.xml ./
 RUN --mount=type=cache,target=/root/.m2 mvn -q -e -DskipTests dependency:go-offline
@@ -7,7 +7,7 @@ COPY src ./src
 
 # Dedicated test stage so CI can run tests via docker build --target test
 FROM builder AS test
-RUN --mount=type=cache,target=/root/.m2 mvn -q -e -DskipTests=false test
+RUN --mount=type=cache,target=/root/.m2 mvn -q -e -DskipTests=false -DdisableTestcontainers=true test
 
 # Build artifact (skip tests here since they ran in the test stage)
 FROM builder AS package

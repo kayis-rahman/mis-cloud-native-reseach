@@ -4,7 +4,7 @@ This repository contains five Spring Boot services, each with its own Dockerfile
 Services: identity (9000), cart (9002), product (9001), order (9003), payment (9004)
 
 Images are built using a secure multi-stage approach:
-- Builder: maven:3.9.8-eclipse-temurin-17-alpine
+- Builder: maven:3.9.8-eclipse-temurin-17-alpine (used with Dockerfile directive: FROM --platform=linux/amd64 ...)
 - Runtime: eclipse-temurin:17-jre-alpine
 - Non-root user, minimal JAVA_OPTS
 
@@ -42,3 +42,4 @@ Notes
 - The Dockerfiles leverage Maven cache mounts and go-offline to speed up builds.
 - Each image runs as a non-root user (spring) to improve container security.
 - The runtime image is JRE-only and Alpine-based to minimize size.
+- Tests executed during the Dockerfile "test" stage run with -DdisableTestcontainers=true, which switches integration tests to an H2 in-memory database. This avoids requiring a Docker daemon during docker build. Local runs (mvn test) still use Testcontainers by default.

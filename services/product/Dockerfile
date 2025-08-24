@@ -1,6 +1,6 @@
 # Multi-stage build for Product Service
 # Builder stage: use lightweight Maven + JDK
-FROM maven:3.9.8-eclipse-temurin-17-alpine AS builder
+FROM --platform=linux/amd64 maven:3.9.8-eclipse-temurin-17-alpine AS builder
 WORKDIR /workspace
 # Copy only pom.xml first for better layer caching
 COPY pom.xml ./
@@ -11,7 +11,7 @@ COPY src ./src
 
 # Test stage: run unit/integration tests
 FROM builder AS test
-RUN --mount=type=cache,target=/root/.m2 mvn -q -e -DskipTests=false test
+RUN --mount=type=cache,target=/root/.m2 mvn -q -e -DskipTests=false -DdisableTestcontainers=true test
 
 # Package stage: build jar (skip tests here since test stage already ran)
 FROM builder AS package

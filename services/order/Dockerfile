@@ -1,5 +1,5 @@
 # Multi-stage build for Order Service
-FROM maven:3.9.8-eclipse-temurin-17-alpine AS builder
+FROM --platform=linux/amd64 maven:3.9.8-eclipse-temurin-17-alpine AS builder
 WORKDIR /workspace
 COPY pom.xml ./
 RUN --mount=type=cache,target=/root/.m2 mvn -q -e -DskipTests dependency:go-offline
@@ -7,7 +7,7 @@ COPY src ./src
 
 # Test stage for dockerized test runs
 FROM builder AS test
-RUN --mount=type=cache,target=/root/.m2 mvn -q -e -DskipTests=false test
+RUN --mount=type=cache,target=/root/.m2 mvn -q -e -DskipTests=false -DdisableTestcontainers=true test
 
 # Package stage (skip tests here)
 FROM builder AS package
