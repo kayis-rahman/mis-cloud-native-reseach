@@ -126,6 +126,12 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: Set registry permissions
+      run: |
+        # Convert repository owner to lowercase for GHCR
+        REPO_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+        echo "GHCR_OWNER_LOWER=${REPO_OWNER}" >> $GITHUB_ENV
+
     - name: Extract metadata
       id: meta
       run: |
@@ -143,6 +149,7 @@ jobs:
       run: |
         chmod +x scripts/docker-build-all.sh
         export GHCR_TOKEN=${{ secrets.GITHUB_TOKEN }}
+        export GHCR_OWNER=${{ env.GHCR_OWNER_LOWER }}
         export TAG=${{ env.IMAGE_TAG }}
         ./scripts/docker-build-all.sh
 
@@ -150,8 +157,8 @@ jobs:
       run: |
         chmod +x scripts/scan_security.sh
         for service in identity product cart order payment api-gateway; do
-          echo "Scanning image: ${{ env.REGISTRY }}/${{ env.GHCR_OWNER }}/${service}:${{ env.IMAGE_TAG }}"
-          IMAGE="${{ env.REGISTRY }}/${{ env.GHCR_OWNER }}/${service}:${{ env.IMAGE_TAG }}" \
+          echo "Scanning image: ${{ env.REGISTRY }}/${{ env.GHCR_OWNER_LOWER }}/${service}:${{ env.IMAGE_TAG }}"
+          IMAGE="${{ env.REGISTRY }}/${{ env.GHCR_OWNER_LOWER }}/${service}:${{ env.IMAGE_TAG }}" \
             NO_PROGRESS=1 ./scripts/scan_security.sh
         done
 
