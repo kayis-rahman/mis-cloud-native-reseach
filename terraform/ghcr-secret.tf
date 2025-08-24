@@ -34,10 +34,7 @@ resource "google_secret_manager_secret" "ghcr_pat" {
 
 # Use existing secret if available, otherwise use the one we created
 locals {
-  secret_id = length(data.google_secret_manager_secret.ghcr_pat_existing) > 0 ?
-              data.google_secret_manager_secret.ghcr_pat_existing[0].id :
-              (length(google_secret_manager_secret.ghcr_pat) > 0 ?
-               google_secret_manager_secret.ghcr_pat[0].id : "")
+  secret_id = length(data.google_secret_manager_secret.ghcr_pat_existing) > 0 ? data.google_secret_manager_secret.ghcr_pat_existing[0].id : (length(google_secret_manager_secret.ghcr_pat) > 0 ? google_secret_manager_secret.ghcr_pat[0].id : "")
 }
 
 # If a token is provided, create a new secret version with its value
