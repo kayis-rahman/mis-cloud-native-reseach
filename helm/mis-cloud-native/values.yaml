@@ -15,7 +15,7 @@ services:
   api-gateway:
     enabled: true
     name: api-gateway
-    image: "{{ .Values.global.ghcrOwner }}/api-gateway:latest"
+    image: "api-gateway:latest"
     replicaCount: 1
     containerPort: 8080
     usesDb: false
@@ -38,7 +38,7 @@ services:
   identity:
     enabled: true
     name: identity-service
-    image: "{{ .Values.global.ghcrOwner }}/identity-service:latest"
+    image: "identity-service:latest"
     replicaCount: 1
     containerPort: 9000
     usesDb: true
@@ -59,7 +59,7 @@ services:
   product:
     enabled: true
     name: product-service
-    image: "{{ .Values.global.ghcrOwner }}/product-service:latest"
+    image: "product-service:latest"
     replicaCount: 1
     containerPort: 9001
     usesDb: true
@@ -80,7 +80,7 @@ services:
   cart:
     enabled: true
     name: cart-service
-    image: "{{ .Values.global.ghcrOwner }}/cart-service:latest"
+    image: "cart-service:latest"
     replicaCount: 1
     containerPort: 9002
     usesDb: true
@@ -101,7 +101,7 @@ services:
   order:
     enabled: true
     name: order-service
-    image: "{{ .Values.global.ghcrOwner }}/order-service:latest"
+    image: "order-service:latest"
     replicaCount: 1
     containerPort: 9003
     usesDb: true
@@ -122,7 +122,7 @@ services:
   payment:
     enabled: true
     name: payment-service
-    image: "{{ .Values.global.ghcrOwner }}/payment-service:latest"
+    image: "payment-service:latest"
     replicaCount: 1
     containerPort: 9004
     usesDb: true

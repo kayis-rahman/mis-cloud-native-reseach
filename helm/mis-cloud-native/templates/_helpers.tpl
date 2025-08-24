@@ -28,20 +28,10 @@ helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
 {{- define "mis-cloud-native.image" -}}
 {{- $global := .global -}}
 {{- $image := .image -}}
+{{- $ghcrOwner := $global.ghcrOwner -}}
 {{- if $global.imageRegistry -}}
-{{- if contains "$GHCR_OWNER" $image -}}
-{{- $ghcrOwner := $global.ghcrOwner | default "kayis-rahman" -}}
-{{- $processedImage := $image | replace "$GHCR_OWNER" $ghcrOwner -}}
-{{- printf "%s/%s" $global.imageRegistry $processedImage -}}
+{{- printf "%s/%s/%s" $global.imageRegistry $ghcrOwner $image -}}
 {{- else -}}
-{{- printf "%s/%s" $global.imageRegistry $image -}}
-{{- end -}}
-{{- else -}}
-{{- if contains "$GHCR_OWNER" $image -}}
-{{- $ghcrOwner := $global.ghcrOwner | default "kayis-rahman" -}}
-{{- $image | replace "$GHCR_OWNER" $ghcrOwner -}}
-{{- else -}}
-{{- $image -}}
-{{- end -}}
+{{- printf "%s/%s" $ghcrOwner $image -}}
 {{- end -}}
 {{- end -}}
