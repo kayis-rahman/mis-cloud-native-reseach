@@ -42,8 +42,8 @@ fi
 
 IMAGE="ghcr.io/${GHCR_OWNER}/${IMAGE_NAME}:${TAG}"
 
-echo "[INFO] Logging in to GHCR as ${GHCR_OWNER}"
-echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_OWNER" --password-stdin
+echo "[INFO] Logging in to GHCR as ${GITHUB_ACTOR:-$GHCR_OWNER}"
+echo "$GHCR_TOKEN" | docker login ghcr.io -u "${GITHUB_ACTOR:-$GHCR_OWNER}" --password-stdin
 
 echo "[INFO] Building image: $IMAGE"
 cd "$SERVICE_DIR"
