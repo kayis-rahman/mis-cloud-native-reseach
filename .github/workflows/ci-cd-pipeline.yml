@@ -87,7 +87,29 @@ jobs:
       run: |
         echo "🔐 Validating Google Cloud Authentication..."
         
-        # Check if gcloud is authenticated
+        # The google-github-actions/auth creates a credentials file but doesn't activate it for gcloud
+        # We need to activate the service account manually
+        
+        # Check if credentials file was created by the auth action
+        if [ -n "$GOOGLE_APPLICATION_CREDENTIALS" ] && [ -f "$GOOGLE_APPLICATION_CREDENTIALS" ]; then
+          echo "✅ Found credentials file: $GOOGLE_APPLICATION_CREDENTIALS"
+          
+          # Activate the service account
+          echo "🔑 Activating service account..."
+          gcloud auth activate-service-account --key-file="$GOOGLE_APPLICATION_CREDENTIALS"
+          
+          # Set the project
+          echo "📋 Setting project to: ${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}"
+          gcloud config set project "${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}"
+          
+        else
+          echo "❌ No credentials file found from auth action"
+          echo "GOOGLE_APPLICATION_CREDENTIALS: $GOOGLE_APPLICATION_CREDENTIALS"
+          exit 1
+        fi
+        
+        # Now validate the authentication
+        echo "🧪 Testing authentication..."
         if gcloud auth list --filter=status:ACTIVE --format="value(account)" | grep -q "."; then
           echo "✅ Successfully authenticated with Google Cloud"
           
@@ -97,7 +119,7 @@ jobs:
           
           # Test project access
           echo "🔍 Testing project access..."
-          if gcloud projects describe ${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }} --quiet; then
+          if gcloud projects describe "${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}" --quiet; then
             echo "✅ Successfully accessed project: ${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}"
           else
             echo "❌ Failed to access project. Check service account permissions."
@@ -113,7 +135,7 @@ jobs:
           fi
           
         else
-          echo "❌ Authentication failed - no active accounts found"
+          echo "❌ Authentication failed - no active accounts found after activation"
           echo "Debug info:"
           gcloud auth list
           exit 1
