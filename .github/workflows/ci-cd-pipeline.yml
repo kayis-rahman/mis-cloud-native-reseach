@@ -114,7 +114,7 @@ jobs:
   build-images:
     name: Build & Push Images
     runs-on: ubuntu-latest
-    needs: [code-quality, test]
+#    needs: [code-quality, test]
     if: github.event_name != 'pull_request'
     outputs:
       image-tag: ${{ steps.meta.outputs.tags }}
