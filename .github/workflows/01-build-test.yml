@@ -66,4 +66,10 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.service }}-artifact
-        path: services/${{ matrix.service }}/target/*.jar
+        path: |
+          services/${{ matrix.service }}/target/*.jar
+          !services/${{ matrix.service }}/target/*-sources.jar
+          !services/${{ matrix.service }}/target/*-javadoc.jar
+        retention-days: 1
+        if-no-files-found: error
+        compression-level: 9
