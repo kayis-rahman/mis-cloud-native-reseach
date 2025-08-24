@@ -19,7 +19,7 @@ spec:
     - host: {{ $host | quote }}
       http:
         paths:
-          - path: /{{ $key }}
+          - path: {{ if and (eq $key "api-gateway") ($global.ingress.gatewayRoot) }}/{{ else }}/{{ $key }}{{ end }}
             pathType: Prefix
             backend:
               service:

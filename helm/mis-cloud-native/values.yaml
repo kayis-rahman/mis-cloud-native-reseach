@@ -8,6 +8,8 @@ global:
     className: ""
     hosts: []
     tls: []
+    # If true, expose api-gateway at root path "/" instead of "/api-gateway"
+    gatewayRoot: false
 
 # Define microservices here
 services:
@@ -152,3 +154,8 @@ services:
       path: /actuator/health
       initialDelaySeconds: 10
       periodSeconds: 10
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 80
