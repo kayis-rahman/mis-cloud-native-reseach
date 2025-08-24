@@ -78,3 +78,4 @@ override.tf.json
 #helm/**/charts/
 helm/**/*.tgz
 helm/**/Chart.lock
+gcp-sa-key.json
