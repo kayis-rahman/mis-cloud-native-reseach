@@ -403,17 +403,54 @@ jobs:
       with:
         credentials_json: ${{ secrets.GCP_SA_KEY }}
 
+    - name: Validate Google Cloud Authentication
+      run: |
+        echo "🔐 Validating Google Cloud Authentication for deployment..."
+        
+        # Check if credentials file was created by the auth action
+        if [ -n "$GOOGLE_APPLICATION_CREDENTIALS" ] && [ -f "$GOOGLE_APPLICATION_CREDENTIALS" ]; then
+          echo "✅ Found credentials file: $GOOGLE_APPLICATION_CREDENTIALS"
+          
+          # Activate the service account
+          echo "🔑 Activating service account..."
+          gcloud auth activate-service-account --key-file="$GOOGLE_APPLICATION_CREDENTIALS"
+          
+          # Set the project
+          echo "📋 Setting project to: ${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}"
+          gcloud config set project "${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}"
+          
+        else
+          echo "❌ No credentials file found from auth action"
+          exit 1
+        fi
+
     - name: Set up Google Cloud SDK
       uses: google-github-actions/setup-gcloud@v2
       with:
-        project_id: ${{ needs.infrastructure.outputs.project-id }}
+        project_id: ${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}
+
+    - name: Install gke-gcloud-auth-plugin
+      run: |
+        echo "📦 Installing gke-gcloud-auth-plugin..."
+        gcloud components install gke-gcloud-auth-plugin --quiet
+        echo "✅ gke-gcloud-auth-plugin installed successfully"
 
     - name: Configure kubectl
       run: |
-        gcloud container clusters get-credentials \
-          ${{ needs.infrastructure.outputs.cluster-name }} \
-          --region ${{ needs.infrastructure.outputs.cluster-location }} \
-          --project ${{ needs.infrastructure.outputs.project-id }}
+        echo "🔧 Configuring kubectl for GKE cluster..."
+        
+        # Use infrastructure outputs if available, otherwise use defaults
+        CLUSTER_NAME="${{ needs.infrastructure.outputs.cluster-name || 'mis-cloud-native-gke' }}"
+        CLUSTER_LOCATION="${{ needs.infrastructure.outputs.cluster-location || 'us-central1' }}"
+        PROJECT_ID="${{ needs.infrastructure.outputs.project-id || secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}"
+        
+        echo "  Cluster: $CLUSTER_NAME"
+        echo "  Location: $CLUSTER_LOCATION"
+        echo "  Project: $PROJECT_ID"
+        
+        gcloud container clusters get-credentials "$CLUSTER_NAME" \
+          --region "$CLUSTER_LOCATION" \
+          --project "$PROJECT_ID"
 
     - name: Set up Helm
       uses: azure/setup-helm@v4
@@ -462,8 +499,8 @@ jobs:
   deploy-production:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    #needs: build-images
-  #  if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: [infrastructure]
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     environment: production
     steps:
     - name: Checkout code
@@ -474,17 +511,54 @@ jobs:
       with:
         credentials_json: ${{ secrets.GCP_SA_KEY }}
 
+    - name: Validate Google Cloud Authentication
+      run: |
+        echo "🔐 Validating Google Cloud Authentication for production deployment..."
+        
+        # Check if credentials file was created by the auth action
+        if [ -n "$GOOGLE_APPLICATION_CREDENTIALS" ] && [ -f "$GOOGLE_APPLICATION_CREDENTIALS" ]; then
+          echo "✅ Found credentials file: $GOOGLE_APPLICATION_CREDENTIALS"
+          
+          # Activate the service account
+          echo "🔑 Activating service account..."
+          gcloud auth activate-service-account --key-file="$GOOGLE_APPLICATION_CREDENTIALS"
+          
+          # Set the project
+          echo "📋 Setting project to: ${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}"
+          gcloud config set project "${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}"
+          
+        else
+          echo "❌ No credentials file found from auth action"
+          exit 1
+        fi
+
     - name: Set up Google Cloud SDK
       uses: google-github-actions/setup-gcloud@v2
       with:
-        project_id: ${{ needs.infrastructure.outputs.project-id }}
+        project_id: ${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}
+
+    - name: Install gke-gcloud-auth-plugin
+      run: |
+        echo "📦 Installing gke-gcloud-auth-plugin..."
+        gcloud components install gke-gcloud-auth-plugin --quiet
+        echo "✅ gke-gcloud-auth-plugin installed successfully"
 
     - name: Configure kubectl
       run: |
-        gcloud container clusters get-credentials \
-          ${{ needs.infrastructure.outputs.cluster-name }} \
-          --region ${{ needs.infrastructure.outputs.cluster-location }} \
-          --project ${{ needs.infrastructure.outputs.project-id }}
+        echo "🔧 Configuring kubectl for GKE cluster..."
+        
+        # Use infrastructure outputs if available, otherwise use defaults
+        CLUSTER_NAME="${{ needs.infrastructure.outputs.cluster-name || 'mis-cloud-native-gke' }}"
+        CLUSTER_LOCATION="${{ needs.infrastructure.outputs.cluster-location || 'us-central1' }}"
+        PROJECT_ID="${{ needs.infrastructure.outputs.project-id || secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}"
+        
+        echo "  Cluster: $CLUSTER_NAME"
+        echo "  Location: $CLUSTER_LOCATION"
+        echo "  Project: $PROJECT_ID"
+        
+        gcloud container clusters get-credentials "$CLUSTER_NAME" \
+          --region "$CLUSTER_LOCATION" \
+          --project "$PROJECT_ID"
 
     - name: Set up Helm
       uses: azure/setup-helm@v4
