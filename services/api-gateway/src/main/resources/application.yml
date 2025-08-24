@@ -1,0 +1,73 @@
+spring:
+  application:
+    name: api-gateway
+  main:
+    web-application-type: reactive
+  cloud:
+    gateway:
+      default-filters:
+        - RemoveRequestHeader=Cookie
+        - RemoveResponseHeader=Server
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins: "*"
+            allowedMethods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+            allowedHeaders: "*"
+            maxAge: 3600
+      routes:
+        - id: identity
+          uri: ${IDENTITY_URI:http://localhost:9000}
+          predicates:
+            - Path=/api/identity/**
+          filters:
+            - StripPrefix=2
+        - id: product
+          uri: ${PRODUCT_URI:http://localhost:9001}
+          predicates:
+            - Path=/api/products/**
+          filters:
+            - StripPrefix=2
+        - id: cart
+          uri: ${CART_URI:http://localhost:9002}
+          predicates:
+            - Path=/api/cart/**
+          filters:
+            - StripPrefix=2
+        - id: order
+          uri: ${ORDER_URI:http://localhost:9003}
+          predicates:
+            - Path=/api/orders/**
+          filters:
+            - StripPrefix=2
+        - id: payment
+          uri: ${PAYMENT_URI:http://localhost:9004}
+          predicates:
+            - Path=/api/payments/**
+          filters:
+            - StripPrefix=2
+
+server:
+  port: ${SERVER_PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health,info"
+  endpoint:
+    health:
+      show-details: never
+
+# Security and rate limit configuration
+security:
+  api-keys: ${SECURITY_API_KEYS:dev-key-change-me}
+  header-name: ${SECURITY_API_KEY_HEADER:X-API-Key}
+  allowlist-paths: 
+    - /actuator/health
+    - /actuator/info
+
+ratelimit:
+  replenish-rate: ${RATE_LIMIT_REPLENISH_PER_SEC:10}
+  burst-capacity: ${RATE_LIMIT_BURST_CAPACITY:20}
+  cache-expire-minutes: ${RATE_LIMIT_CACHE_MINUTES:10}

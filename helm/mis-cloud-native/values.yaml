@@ -110,3 +110,45 @@ services:
       path: /actuator/health/readiness
       initialDelaySeconds: 10
       periodSeconds: 10
+
+  api-gateway:
+    enabled: true
+    name: api-gateway
+    image: "sparkage/api-gateway:latest"
+    replicaCount: 1
+    containerPort: 8080
+    service:
+      type: ClusterIP
+      port: 8080
+    resources: {}
+    # Configure backend URIs and security/rate limit via env vars
+    env:
+      - name: IDENTITY_URI
+        value: http://{{ $.Release.Name }}-identity:9000
+      - name: PRODUCT_URI
+        value: http://{{ $.Release.Name }}-product:9001
+      - name: CART_URI
+        value: http://{{ $.Release.Name }}-cart:9002
+      - name: ORDER_URI
+        value: http://{{ $.Release.Name }}-order:9003
+      - name: PAYMENT_URI
+        value: http://{{ $.Release.Name }}-payment:9004
+      - name: SECURITY_API_KEYS
+        valueFrom:
+          secretKeyRef:
+            name: api-gateway-security
+            key: apiKeys
+      - name: RATE_LIMIT_REPLENISH_PER_SEC
+        value: "10"
+      - name: RATE_LIMIT_BURST_CAPACITY
+        value: "20"
+      - name: RATE_LIMIT_CACHE_MINUTES
+        value: "10"
+    livenessProbe:
+      path: /actuator/health
+      initialDelaySeconds: 15
+      periodSeconds: 10
+    readinessProbe:
+      path: /actuator/health
+      initialDelaySeconds: 10
+      periodSeconds: 10

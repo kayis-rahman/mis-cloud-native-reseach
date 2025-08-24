@@ -7,7 +7,7 @@ COPY src ./src
 
 # Dedicated test stage so CI can run tests via docker build --target test
 FROM builder AS test
-RUN --mount=type=cache,target=/root/.m2 mvn -q -e -DskipTests=false -DdisableTestcontainers=true test
+RUN --mount=type=cache,target=/root/.m2 mvn -q -e -DskipTests=false test
 
 # Build artifact (skip tests here since they ran in the test stage)
 FROM builder AS package
