@@ -18,6 +18,11 @@ if [[ -z "$GLOBAL_REGISTRY" && -n "$GHCR_OWNER" ]]; then
 fi
 
 VALUES=( )
+# Set GHCR_OWNER for template variable substitution (without registry prefix)
+if [[ -n "$GHCR_OWNER" ]]; then
+  VALUES+=( --set-string global.ghcrOwner="$GHCR_OWNER" )
+fi
+
 for svc in identity product cart order payment api-gateway; do
   VALUES+=( --set services.${svc}.enabled=true )
   img_var="IMG_$(printf "%s" "$svc" | tr '[:lower:]' '[:upper:]' | tr '-' '_')" # IMG_IDENTITY, IMG_API_GATEWAY etc
@@ -25,8 +30,16 @@ for svc in identity product cart order payment api-gateway; do
     # Per-service explicit image override
     VALUES+=( --set-string services.${svc}.image=${!img_var} )
   elif [[ -n "$GLOBAL_REGISTRY" ]]; then
-    # Compose full image path from registry and service name
-    VALUES+=( --set-string services.${svc}.image=${GLOBAL_REGISTRY}/${svc}:latest )
+    # For services that use $GHCR_OWNER template, don't override - let template handle it
+    case "$svc" in
+      api-gateway|identity|product|cart|order|payment)
+        # These services use $GHCR_OWNER template, skip override
+        ;;
+      *)
+        # Compose full image path from registry and service name for other services
+        VALUES+=( --set-string services.${svc}.image=${GLOBAL_REGISTRY}/${svc}:latest )
+        ;;
+    esac
   else
     # No override: keep chart default image (may be Docker Hub sparkage/*)
     :
