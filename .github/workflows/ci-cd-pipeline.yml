@@ -142,72 +142,64 @@ jobs:
         echo "tags=$TAG" >> $GITHUB_OUTPUT
         echo "IMAGE_TAG=$TAG" >> $GITHUB_ENV
 
-    # Try multiple authentication approaches
-    - name: Log in to Container Registry (Method 1)
+    # Alternative approach: Try using username/repo format instead of just username
+    - name: Log in to Container Registry with alternative namespace
       uses: docker/login-action@v3
       with:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Verify authentication and test push permissions
-      run: |
-        echo "Testing GHCR authentication..."
-        echo "Repository: ${{ github.repository }}"
-        echo "Actor: ${{ github.actor }}"
-        echo "Owner: ${{ github.repository_owner }}"
-        echo "Lower case owner: ${{ env.GHCR_OWNER_LOWER }}"
-        
-        # Test if we can at least pull a public image
-        docker pull hello-world:latest || echo "Docker pull test failed"
-        
-        # Create a simple test image to verify push permissions
-        echo "FROM hello-world:latest" > Dockerfile.test
-        docker build -f Dockerfile.test -t ghcr.io/${{ env.GHCR_OWNER_LOWER }}/test:${{ env.IMAGE_TAG }} .
-        rm Dockerfile.test
-
-    - name: Push test image to verify permissions
-      run: |
-        echo "Attempting to push test image..."
-        docker push ghcr.io/${{ env.GHCR_OWNER_LOWER }}/test:${{ env.IMAGE_TAG }} || {
-          echo "Test push failed. Trying alternative authentication..."
-          
-          # Alternative login method
-          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-          
-          # Try pushing the test image again
-          docker push ghcr.io/${{ env.GHCR_OWNER_LOWER }}/test:${{ env.IMAGE_TAG }} || {
-            echo "Both authentication methods failed. Checking repository settings..."
-            echo "Please ensure:"
-            echo "1. Repository has 'packages: write' permission enabled"
-            echo "2. GitHub Container Registry is enabled for this repository"
-            echo "3. Repository visibility allows package publishing"
-            exit 1
-          }
-        }
-        
-        echo "Test push successful! Proceeding with service images..."
-
-    - name: Build and push service images
+    - name: Build and push with repository-scoped namespace
       run: |
         services=("identity" "product" "cart" "order" "payment" "api-gateway")
         
+        # Use repository-scoped naming: ghcr.io/owner/repo/service instead of ghcr.io/owner/service
+        REPO_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f2 | tr '[:upper:]' '[:lower:]')
+        
         for service in "${services[@]}"; do
-          echo "Building and pushing $service..."
+          echo "Building and pushing $service with repository-scoped naming..."
           cd services/$service
           
-          # Build the image with proper tagging
-          docker build -t ghcr.io/${{ env.GHCR_OWNER_LOWER }}/$service:${{ env.IMAGE_TAG }} .
+          # Try repository-scoped namespace first
+          REPO_SCOPED_IMAGE="ghcr.io/${{ env.GHCR_OWNER_LOWER }}/${REPO_NAME}/${service}:${{ env.IMAGE_TAG }}"
           
-          # Tag with additional metadata
-          docker tag ghcr.io/${{ env.GHCR_OWNER_LOWER }}/$service:${{ env.IMAGE_TAG }} \
-                     ghcr.io/${{ env.GHCR_OWNER_LOWER }}/$service:${{ github.sha }}
+          echo "Building image: $REPO_SCOPED_IMAGE"
+          docker build -t "$REPO_SCOPED_IMAGE" .
           
-          # Push both tags
-          docker push ghcr.io/${{ env.GHCR_OWNER_LOWER }}/$service:${{ env.IMAGE_TAG }}
-          docker push ghcr.io/${{ env.GHCR_OWNER_LOWER }}/$service:${{ github.sha }}
+          echo "Attempting to push: $REPO_SCOPED_IMAGE"
+          if docker push "$REPO_SCOPED_IMAGE"; then
+            echo "✅ Successfully pushed $REPO_SCOPED_IMAGE"
+          else
+            echo "Repository-scoped push failed, trying direct namespace..."
+            
+            # Fallback to direct namespace
+            DIRECT_IMAGE="ghcr.io/${{ env.GHCR_OWNER_LOWER }}/${service}:${{ env.IMAGE_TAG }}"
+            docker tag "$REPO_SCOPED_IMAGE" "$DIRECT_IMAGE"
+            
+            if docker push "$DIRECT_IMAGE"; then
+              echo "✅ Successfully pushed $DIRECT_IMAGE"
+            else
+              echo "❌ Both push methods failed for $service"
+              echo "Debugging information:"
+              echo "  Repository: ${{ github.repository }}"
+              echo "  Actor: ${{ github.actor }}"
+              echo "  Owner (lowercase): ${{ env.GHCR_OWNER_LOWER }}"
+              echo "  Repository name: ${REPO_NAME}"
+              echo "  Attempted images:"
+              echo "    - $REPO_SCOPED_IMAGE"
+              echo "    - $DIRECT_IMAGE"
+              
+              # Check if we can see any existing packages
+              echo "Checking existing packages (if any):"
+              curl -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+                   -H "Accept: application/vnd.github.v3+json" \
+                   "https://api.github.com/user/packages?package_type=container" || echo "Could not list packages"
+              
+              exit 1
+            fi
+          fi
           
-          echo "✅ Successfully pushed ghcr.io/${{ env.GHCR_OWNER_LOWER }}/$service:${{ env.IMAGE_TAG }}"
           cd ../..
         done
 
