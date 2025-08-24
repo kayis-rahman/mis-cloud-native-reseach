@@ -10,6 +10,16 @@ resource "google_secret_manager_secret" "ghcr_pat" {
     auto {}
   }
 
+  lifecycle {
+    # Prevent recreation unless the secret_id changes
+    create_before_destroy = true
+    ignore_changes = [
+      # Ignore changes to labels and annotations that might be set externally
+      labels,
+      annotations
+    ]
+  }
+
   depends_on = [google_project_service.services]
 }
 
@@ -18,4 +28,13 @@ resource "google_secret_manager_secret_version" "ghcr_pat" {
   count  = (var.ghcr_token_secret_id != "" && var.ghcr_token != "") ? 1 : 0
   secret = google_secret_manager_secret.ghcr_pat[0].id
   secret_data = var.ghcr_token
+
+  lifecycle {
+    # Only recreate if the actual secret data changes
+    create_before_destroy = true
+    # Replace the version if the secret data changes
+    replace_triggered_by = [
+      var.ghcr_token
+    ]
+  }
 }
