@@ -8,6 +8,12 @@ cd "$ROOT_DIR/terraform"
 
 : "${TF_VAR_gcp_project_id:?Set TF_VAR_gcp_project_id to your GCP Project ID}"
 
+# Hint if backend not configured
+if [[ ! -f "backend.tf" ]]; then
+  echo "[WARN] Terraform backend (backend.tf) not found. State will be local unless you configure GCS backend."
+  echo "       To create a remote state bucket and configure backend, run: scripts/bootstrap_state.sh"
+fi
+
 echo "[INFO] Initializing Terraform"
 terraform init -input=false
 

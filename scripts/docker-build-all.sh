@@ -8,7 +8,7 @@ set -euo pipefail
 # Optional:
 #  - TAG (default: latest)
 #  - PLATFORM (e.g., linux/amd64)
-#  - SERVICES (space-separated list). Default: "identity product cart order payment"
+#  - SERVICES (space-separated list). Default: "identity product cart order payment api-gateway"
 #
 # Usage:
 #   GHCR_OWNER=<owner> GHCR_TOKEN=<pat> ./scripts/docker-build-all.sh
@@ -18,7 +18,7 @@ set -euo pipefail
 : "${GHCR_TOKEN:?Set GHCR_TOKEN to a GitHub PAT with write:packages}"
 
 TAG=${TAG:-latest}
-SERVICES=${SERVICES:-"identity product cart order payment"}
+SERVICES=${SERVICES:-"identity product cart order payment api-gateway"}
 
 ROOT_DIR=$(cd "$(dirname "$0")/.." && pwd)
 

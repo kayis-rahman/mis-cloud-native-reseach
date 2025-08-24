@@ -4,7 +4,7 @@
 terraform {
   backend "gcs" {
     # REQUIRED: update with your actual bucket name
-    bucket = "REPLACE_WITH_TF_STATE_BUCKET_NAME"
+    bucket = "tfstate-mis-cloud-native-research-ac98"
 
     # Optional path/prefix where state files will live in the bucket
     prefix = "mis-cloud-native/terraform/state"

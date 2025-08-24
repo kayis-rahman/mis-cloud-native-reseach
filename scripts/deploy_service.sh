@@ -22,11 +22,12 @@ VALUES=(
   --set services.cart.enabled=false
   --set services.order.enabled=false
   --set services.payment.enabled=false
+  --set services.api-gateway.enabled=false
 )
 case "$SERVICE" in
-  identity|product|cart|order|payment) ;;
+  identity|product|cart|order|payment|api-gateway) ;;
   *) echo "[ERROR] Unknown SERVICE: $SERVICE" >&2; exit 1;;
-esac
+ esac
 
 VALUES+=( --set services.${SERVICE}.enabled=true )
 VALUES+=( --set-string services.${SERVICE}.image=${IMAGE} )

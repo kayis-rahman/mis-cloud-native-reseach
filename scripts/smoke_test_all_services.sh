@@ -12,7 +12,7 @@ set -euo pipefail
 ROOT_DIR=$(cd "$(dirname "$0")/.." && pwd)
 NAMESPACE="${NAMESPACE:-default}"
 RELEASE="${RELEASE:-mis}"
-SERVICES=(identity product cart order payment)
+SERVICES=(identity product cart order payment api-gateway)
 
 for svc in "${SERVICES[@]}"; do
   echo "=============================="

@@ -39,6 +39,7 @@ if [[ -z "$TARGET_PORT" ]]; then
     cart)     TARGET_PORT=9002;;
     order)    TARGET_PORT=9003;;
     payment)  TARGET_PORT=9004;;
+    api-gateway) TARGET_PORT=8080;;
     *) TARGET_PORT=8080;;
   esac
   echo "[WARN] Could not auto-detect container port; falling back to default ${TARGET_PORT} for ${SERVICE}"

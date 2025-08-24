@@ -6,7 +6,7 @@ set -euo pipefail
 # Usage: scripts/run_tests.sh
 
 ROOT_DIR=$(cd "$(dirname "$0")/.." && pwd)
-SERVICES=(identity product cart order payment)
+SERVICES=(identity product cart order payment api-gateway)
 
 # Use a multi-arch Maven image tag so it works on amd64/arm64
 MVN_IMAGE="maven:3.9.8-eclipse-temurin-17"

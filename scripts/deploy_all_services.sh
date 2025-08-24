@@ -18,7 +18,7 @@ if [[ -z "$GLOBAL_REGISTRY" && -n "$GHCR_OWNER" ]]; then
 fi
 
 VALUES=( )
-for svc in identity product cart order payment; do
+for svc in identity product cart order payment api-gateway; do
   VALUES+=( --set services.${svc}.enabled=true )
   img_var="IMG_$(printf "%s" "$svc" | tr '[:lower:]' '[:upper:]')" # IMG_IDENTITY etc
   if [[ -n "${!img_var:-}" ]]; then

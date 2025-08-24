@@ -146,7 +146,7 @@ else
 fi
 
 step "Readiness summary for known services"
-for svc in cart identity order payment product; do
+for svc in cart identity order payment product api-gateway; do
   if kubectl get deploy -n "$NAMESPACE" 2>/dev/null | grep -q "mis-$svc"; then
     kubectl -n "$NAMESPACE" rollout status deploy/"mis-$svc" --timeout=20s || true
   fi

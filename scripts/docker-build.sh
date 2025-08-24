@@ -13,7 +13,7 @@ set -euo pipefail
 #  SERVICE=identity IMAGE_NAME=identity-service TAG=latest ./scripts/docker-build.sh
 #
 # Optional env vars:
-#  - SERVICE (default: identity) — one of: identity, cart, product, order, payment
+#  - SERVICE (default: identity) — one of: identity, cart, product, order, payment, api-gateway
 #  - IMAGE_NAME (default: same as SERVICE)
 #  - TAG (default: latest)
 #  - PLATFORM (optional; e.g., linux/amd64 for Apple Silicon cross-build)
