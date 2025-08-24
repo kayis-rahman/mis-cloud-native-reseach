@@ -1,8 +1,0 @@
-{
-  "ref": "refs/heads/main",
-  "inputs": {
-    "tag": "local-test",
-    "dry_run": true
-  }
-}
-

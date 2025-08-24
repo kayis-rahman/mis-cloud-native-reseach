@@ -1,0 +1,200 @@
+name: Security & Compliance Scan
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # Daily at 2 AM UTC
+  push:
+    branches: [ main, develop ]
+    paths:
+    - 'Dockerfile*'
+    - 'terraform/**'
+    - 'helm/**'
+    - '.github/workflows/**'
+  workflow_dispatch:
+    inputs:
+      scan_type:
+        description: 'Type of security scan'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+        - all
+        - images
+        - code
+        - infrastructure
+        - secrets
+
+env:
+  REGISTRY: ghcr.io
+  GHCR_OWNER: ${{ github.repository_owner }}
+
+jobs:
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        scan-target:
+        - { type: "filesystem", name: "Code & IaC" }
+        - { type: "secrets", name: "Secret Detection" }
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Install Trivy
+      run: |
+        sudo apt-get update
+        sudo apt-get install wget apt-transport-https gnupg lsb-release
+        wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+        echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
+        sudo apt-get update
+        sudo apt-get install trivy
+
+    - name: Run ${{ matrix.scan-target.name }} scan
+      run: |
+        chmod +x scripts/scan_security.sh
+        if [[ "${{ matrix.scan-target.type }}" == "secrets" ]]; then
+          chmod +x scripts/scan_secrets.sh
+          ./scripts/scan_secrets.sh
+        else
+          ./scripts/scan_security.sh
+        fi
+
+    - name: Upload scan results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: security-scan-${{ matrix.scan-target.type }}
+        path: |
+          trivy-*.json
+          trivy-*.sarif
+          security-scan-*.txt
+
+  image-security-scan:
+    name: Container Image Security Scan
+    runs-on: ubuntu-latest
+    if: github.event.inputs.scan_type == 'all' || github.event.inputs.scan_type == 'images' || github.event_name != 'workflow_dispatch'
+    strategy:
+      matrix:
+        service: [identity, product, cart, order, payment, api-gateway]
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Pull latest image
+      run: |
+        docker pull ${{ env.REGISTRY }}/${{ env.GHCR_OWNER }}/${{ matrix.service }}:latest || true
+
+    - name: Scan ${{ matrix.service }} image
+      run: |
+        chmod +x scripts/scan_security.sh
+        IMAGE="${{ env.REGISTRY }}/${{ env.GHCR_OWNER }}/${{ matrix.service }}:latest" \
+          ./scripts/scan_security.sh
+
+    - name: Upload image scan results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: image-scan-${{ matrix.service }}
+        path: |
+          trivy-*.json
+          trivy-*.sarif
+
+  compliance-check:
+    name: Compliance & Policy Check
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install OPA (Open Policy Agent)
+      run: |
+        curl -L -o opa https://openpolicyagent.org/downloads/v0.58.0/opa_linux_amd64_static
+        chmod 755 ./opa
+        sudo mv opa /usr/local/bin
+
+    - name: Run Kubernetes policy checks
+      run: |
+        # Check Helm templates against policies
+        helm template helm/mis-cloud-native > k8s-manifests.yaml
+        
+        # Basic security policy checks
+        echo "Checking for security policies..."
+        
+        # Check for security contexts
+        if ! grep -q "securityContext" k8s-manifests.yaml; then
+          echo "WARNING: No securityContext found in manifests"
+        fi
+        
+        # Check for resource limits
+        if ! grep -q "resources:" k8s-manifests.yaml; then
+          echo "WARNING: No resource limits found in manifests"
+        fi
+        
+        # Check for non-root users
+        if grep -q "runAsUser: 0" k8s-manifests.yaml; then
+          echo "ERROR: Containers running as root detected"
+          exit 1
+        fi
+
+    - name: Infrastructure compliance check
+      run: |
+        # Check Terraform configurations
+        if command -v terraform >/dev/null 2>&1; then
+          cd terraform
+          terraform fmt -check=true
+          terraform validate
+        fi
+
+  notify-security-results:
+    name: Notify Security Results
+    runs-on: ubuntu-latest
+    needs: [security-scan, image-security-scan, compliance-check]
+    if: always()
+    steps:
+    - name: Evaluate security status
+      run: |
+        if [[ "${{ needs.security-scan.result }}" == "failure" ]] || \
+           [[ "${{ needs.image-security-scan.result }}" == "failure" ]] || \
+           [[ "${{ needs.compliance-check.result }}" == "failure" ]]; then
+          echo "🔴 Security scan failures detected!"
+          echo "SECURITY_STATUS=FAILED" >> $GITHUB_ENV
+        else
+          echo "✅ All security scans passed!"
+          echo "SECURITY_STATUS=PASSED" >> $GITHUB_ENV
+        fi
+
+    - name: Create security report
+      run: |
+        cat << EOF > security-report.md
+        # Security Scan Report
+        
+        **Date:** $(date)
+        **Commit:** ${{ github.sha }}
+        **Status:** ${{ env.SECURITY_STATUS }}
+        
+        ## Scan Results
+        - Code & Infrastructure Scan: ${{ needs.security-scan.result }}
+        - Container Image Scan: ${{ needs.image-security-scan.result }}
+        - Compliance Check: ${{ needs.compliance-check.result }}
+        
+        ## Recommendations
+        - Review any failed scans in the workflow logs
+        - Update dependencies if vulnerabilities found
+        - Ensure all security policies are followed
+        EOF
+
+    - name: Upload security report
+      uses: actions/upload-artifact@v4
+      with:
+        name: security-report
+        path: security-report.md

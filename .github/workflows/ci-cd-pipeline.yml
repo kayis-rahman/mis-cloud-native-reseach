@@ -1,0 +1,285 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      deploy_environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
+      services:
+        description: 'Services to deploy (space-separated, or "all")'
+        required: false
+        default: 'all'
+
+env:
+  REGISTRY: ghcr.io
+  GHCR_OWNER: ${{ github.repository_owner }}
+  MAVEN_OPTS: -Dmaven.repo.local=.m2/repository
+
+jobs:
+  # Job 1: Code Quality and Security
+  code-quality:
+    name: Code Quality & Security Checks
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Cache Maven dependencies
+      uses: actions/cache@v4
+      with:
+        path: .m2/repository
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-maven-
+
+    - name: Run Checkstyle
+      run: |
+        for service in identity product cart order payment api-gateway; do
+          echo "Running Checkstyle for $service"
+          cd services/$service
+          mvn checkstyle:check -B
+          cd ../..
+        done
+
+    - name: Scan for secrets
+      run: |
+        chmod +x scripts/scan_secrets.sh
+        ./scripts/scan_secrets.sh
+
+    - name: Security scan (filesystem)
+      run: |
+        chmod +x scripts/scan_security.sh
+        NO_PROGRESS=1 ./scripts/scan_security.sh
+
+  # Job 2: Unit and Integration Tests
+  test:
+    name: Unit & Integration Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [identity, product, cart, order, payment, api-gateway]
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Cache Maven dependencies
+      uses: actions/cache@v4
+      with:
+        path: .m2/repository
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-maven-
+
+    - name: Run tests for ${{ matrix.service }}
+      run: |
+        chmod +x scripts/run_tests.sh
+        ./scripts/run_tests.sh ${{ matrix.service }}
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results-${{ matrix.service }}
+        path: services/${{ matrix.service }}/target/surefire-reports/
+
+    - name: Upload coverage reports
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: coverage-${{ matrix.service }}
+        path: services/${{ matrix.service }}/target/site/jacoco/
+
+  # Job 3: Build and Push Container Images
+  build-images:
+    name: Build & Push Images
+    runs-on: ubuntu-latest
+    needs: [code-quality, test]
+    if: github.event_name != 'pull_request'
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      run: |
+        if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+          TAG="latest"
+        elif [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
+          TAG="develop"
+        else
+          TAG="${{ github.sha }}"
+        fi
+        echo "tags=$TAG" >> $GITHUB_OUTPUT
+        echo "IMAGE_TAG=$TAG" >> $GITHUB_ENV
+
+    - name: Build and push all images
+      run: |
+        chmod +x scripts/docker-build-all.sh
+        export GHCR_TOKEN=${{ secrets.GITHUB_TOKEN }}
+        export TAG=${{ env.IMAGE_TAG }}
+        ./scripts/docker-build-all.sh
+
+    - name: Security scan images
+      run: |
+        chmod +x scripts/scan_security.sh
+        for service in identity product cart order payment api-gateway; do
+          echo "Scanning image: ${{ env.REGISTRY }}/${{ env.GHCR_OWNER }}/${service}:${{ env.IMAGE_TAG }}"
+          IMAGE="${{ env.REGISTRY }}/${{ env.GHCR_OWNER }}/${service}:${{ env.IMAGE_TAG }}" \
+            NO_PROGRESS=1 ./scripts/scan_security.sh
+        done
+
+  # Job 4: Deploy to Staging
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build-images
+    if: github.ref == 'refs/heads/develop' || github.event_name == 'workflow_dispatch'
+    environment: staging
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure kubectl
+      run: |
+        mkdir -p ~/.kube
+        echo "${{ secrets.KUBE_CONFIG_STAGING }}" | base64 -d > ~/.kube/config
+        chmod 600 ~/.kube/config
+
+    - name: Set up Helm
+      uses: azure/setup-helm@v4
+      with:
+        version: '3.12.0'
+
+    - name: Bootstrap infrastructure (if needed)
+      run: |
+        chmod +x scripts/bootstrap_state.sh
+        ./scripts/bootstrap_state.sh || true
+
+    - name: Create secrets
+      run: |
+        chmod +x scripts/create_secrets.sh
+        ./scripts/create_secrets.sh
+      env:
+        DB_PASSWORD: ${{ secrets.DB_PASSWORD_STAGING }}
+        JWT_SECRET: ${{ secrets.JWT_SECRET_STAGING }}
+
+    - name: Deploy services
+      run: |
+        chmod +x scripts/deploy_all_services.sh
+        export GLOBAL_REGISTRY="${{ env.REGISTRY }}/${{ env.GHCR_OWNER }}"
+        if [[ "${{ github.event.inputs.services }}" != "" && "${{ github.event.inputs.services }}" != "all" ]]; then
+          # Deploy specific services
+          for service in ${{ github.event.inputs.services }}; do
+            SERVICE=$service ./scripts/deploy_service.sh
+          done
+        else
+          ./scripts/deploy_all_services.sh
+        fi
+
+    - name: Validate deployment
+      run: |
+        chmod +x scripts/validate_deploy.sh
+        for service in identity product cart order payment api-gateway; do
+          SERVICE=$service ./scripts/validate_deploy.sh
+        done
+
+    - name: Run smoke tests
+      run: |
+        chmod +x scripts/smoke_test_all_services.sh
+        ./scripts/smoke_test_all_services.sh
+
+  # Job 5: Deploy to Production
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: build-images
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    environment: production
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure kubectl
+      run: |
+        mkdir -p ~/.kube
+        echo "${{ secrets.KUBE_CONFIG_PRODUCTION }}" | base64 -d > ~/.kube/config
+        chmod 600 ~/.kube/config
+
+    - name: Set up Helm
+      uses: azure/setup-helm@v4
+      with:
+        version: '3.12.0'
+
+    - name: Validate infrastructure
+      run: |
+        chmod +x scripts/validate_infra.sh
+        ./scripts/validate_infra.sh
+
+    - name: Create production secrets
+      run: |
+        chmod +x scripts/create_secrets.sh
+        ./scripts/create_secrets.sh
+      env:
+        DB_PASSWORD: ${{ secrets.DB_PASSWORD_PRODUCTION }}
+        JWT_SECRET: ${{ secrets.JWT_SECRET_PRODUCTION }}
+
+    - name: Deploy to production with rolling update
+      run: |
+        chmod +x scripts/deploy_all_services.sh
+        export GLOBAL_REGISTRY="${{ env.REGISTRY }}/${{ env.GHCR_OWNER }}"
+        ./scripts/deploy_all_services.sh
+
+    - name: Validate production deployment
+      run: |
+        chmod +x scripts/validate_deploy.sh
+        for service in identity product cart order payment api-gateway; do
+          SERVICE=$service ./scripts/validate_deploy.sh
+        done
+
+    - name: Run production smoke tests
+      run: |
+        chmod +x scripts/smoke_test_all_services.sh
+        ./scripts/smoke_test_all_services.sh
+
+    - name: Notify deployment success
+      if: success()
+      run: |
+        echo "✅ Production deployment successful!"
+        echo "Tag: ${{ needs.build-images.outputs.image-tag }}"
+        echo "Commit: ${{ github.sha }}"

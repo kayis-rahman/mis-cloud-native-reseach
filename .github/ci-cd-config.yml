@@ -1,0 +1,108 @@
+# CI/CD Pipeline Configuration
+
+# Repository Secrets Required
+GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Automatically provided
+KUBE_CONFIG_STAGING: <base64-encoded-kubeconfig>
+KUBE_CONFIG_PRODUCTION: <base64-encoded-kubeconfig>
+GCP_SA_KEY: <service-account-json>
+DB_PASSWORD_STAGING: <staging-db-password>
+DB_PASSWORD_PRODUCTION: <production-db-password>
+JWT_SECRET_STAGING: <staging-jwt-secret>
+JWT_SECRET_PRODUCTION: <production-jwt-secret>
+
+# Environment Variables
+REGISTRY: ghcr.io
+GHCR_OWNER: ${{ github.repository_owner }}
+MAVEN_OPTS: -Dmaven.repo.local=.m2/repository
+
+# Workflow Configuration
+workflows:
+  ci-cd-pipeline:
+    description: "Main CI/CD pipeline for full application lifecycle"
+    triggers:
+      - push: [main, develop]
+      - pull_request: [main]
+      - manual_dispatch
+
+  service-specific-cicd:
+    description: "Optimized pipeline for single service changes"
+    triggers:
+      - push: services/**
+      - manual_dispatch
+
+  security-scan:
+    description: "Comprehensive security scanning"
+    triggers:
+      - schedule: daily
+      - push: security-related files
+      - manual_dispatch
+
+  infrastructure:
+    description: "Infrastructure as Code management"
+    triggers:
+      - push: terraform/**, helm/**
+      - pull_request: terraform/**, helm/**
+      - manual_dispatch
+
+  monitoring:
+    description: "Health checks and monitoring"
+    triggers:
+      - schedule: every 15 minutes
+      - manual_dispatch
+
+  release:
+    description: "Release management and deployment"
+    triggers:
+      - tag: v*
+      - manual_dispatch
+
+# Pipeline Stages
+stages:
+  1_code_quality:
+    - checkstyle_lint
+    - secret_scanning
+    - filesystem_security_scan
+
+  2_testing:
+    - unit_tests (parallel by service)
+    - integration_tests
+    - coverage_reports
+
+  3_build:
+    - docker_build_all_services
+    - container_security_scan
+    - push_to_registry
+
+  4_deploy_staging:
+    - infrastructure_bootstrap
+    - deploy_services
+    - validation_tests
+    - smoke_tests
+
+  5_deploy_production:
+    - infrastructure_validation
+    - rolling_deployment
+    - production_validation
+    - monitoring_setup
+
+# Service Matrix
+services:
+  - identity (port: 9000)
+  - product (port: 9001)
+  - cart (port: 9002)
+  - order (port: 9003)
+  - payment (port: 9004)
+  - api-gateway (port: 8080)
+
+# Deployment Environments
+environments:
+  staging:
+    kubernetes_context: staging
+    namespace: default
+    auto_deploy: develop branch
+
+  production:
+    kubernetes_context: production
+    namespace: default
+    auto_deploy: main branch
+    requires_approval: true
