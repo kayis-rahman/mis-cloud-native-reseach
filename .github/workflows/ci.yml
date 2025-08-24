@@ -60,7 +60,7 @@ jobs:
         
     - name: Upload Test Results
       if: always()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: test-results-${{ matrix.service }}
         path: services/${{ matrix.service }}/target/surefire-reports
@@ -111,15 +111,27 @@ jobs:
   terraform-validate:
     runs-on: ubuntu-latest
     environment: production
+    env:
+      GOOGLE_CREDENTIALS: ${{ secrets.GCP_SA_KEY }}
+
     steps:
     - uses: actions/checkout@v3
     
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v2
     
+    - name: Auth to GCP
+      uses: google-github-actions/auth@v1
+      with:
+        credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
     - name: Terraform Init
       working-directory: ./terraform
-      run: terraform init -backend=false
+      run: |
+        # Create a minimal terraform.tfvars file for validation
+        echo 'gcp_project_id = "dummy-project-id"' > terraform.tfvars
+        echo 'project_name = "dummy-project"' >> terraform.tfvars
+        terraform init -backend=false
 
     - name: Terraform Format Check
       working-directory: ./terraform
