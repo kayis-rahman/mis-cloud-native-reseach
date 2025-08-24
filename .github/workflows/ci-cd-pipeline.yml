@@ -157,6 +157,12 @@ jobs:
       with:
         version: 'v1.28.0'
 
+    - name: Install gke-gcloud-auth-plugin
+      run: |
+        echo "📦 Installing gke-gcloud-auth-plugin..."
+        gcloud components install gke-gcloud-auth-plugin --quiet
+        echo "✅ gke-gcloud-auth-plugin installed successfully"
+
     - name: Bootstrap Terraform state (if needed)
       run: |
         chmod +x scripts/bootstrap_state.sh
