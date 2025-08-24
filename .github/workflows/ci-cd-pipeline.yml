@@ -577,7 +577,16 @@ jobs:
     - name: Deploy to production with rolling update
       run: |
         chmod +x scripts/deploy_all_services.sh
-        export GLOBAL_REGISTRY="${{ env.REGISTRY }}/${{ github.repository_owner }}"
+        
+        # Set up proper registry variables
+        REPO_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+        export GHCR_OWNER="$REPO_OWNER"
+        export GLOBAL_REGISTRY="${{ env.REGISTRY }}/${REPO_OWNER}"
+        
+        echo "🚀 Deploying services to production with:"
+        echo "  GHCR_OWNER: $GHCR_OWNER"
+        echo "  GLOBAL_REGISTRY: $GLOBAL_REGISTRY"
+        
         ./scripts/deploy_all_services.sh
 
     - name: Validate production deployment
