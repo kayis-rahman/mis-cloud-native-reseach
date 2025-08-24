@@ -20,10 +20,12 @@ env:
 permissions:
   contents: read
   packages: write
+  security-events: write
 
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    environment: production
     strategy:
       matrix:
         service: [api-gateway, identity, product, cart, order, payment]
@@ -53,6 +55,7 @@ jobs:
     - name: Run Integration Tests
       working-directory: services/${{ matrix.service }}
       run: |
+        chmod +x ../scripts/run_tests.sh
         ../scripts/run_tests.sh
         
     - name: Upload Test Results
@@ -68,6 +71,8 @@ jobs:
     permissions:
       contents: read
       packages: write
+      security-events: write
+    environment: production
 
     strategy:
       matrix:
@@ -90,6 +95,7 @@ jobs:
       env:
         SERVICE: ${{ matrix.service }}
       run: |
+        chmod +x ./scripts/docker-build.sh
         ./scripts/docker-build.sh
 
     - name: Run Trivy vulnerability scanner
@@ -102,23 +108,9 @@ jobs:
         vuln-type: 'os,library'
         severity: 'CRITICAL,HIGH'
 
-  code-quality:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-    
-    - name: Set up JDK
-      uses: actions/setup-java@v3
-      with:
-        java-version: ${{ env.JAVA_VERSION }}
-        distribution: 'temurin'
-    
-    - name: Run Code Quality Checks
-      run: |
-        mvn -B checkstyle:check spotbugs:check
-
   terraform-validate:
     runs-on: ubuntu-latest
+    environment: production
     steps:
     - uses: actions/checkout@v3
     

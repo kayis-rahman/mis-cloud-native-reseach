@@ -16,11 +16,15 @@ env:
   GKE_ZONE: us-central1-a
   GCP_REGION: us-central1
 
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
 jobs:
   deploy-to-gke:
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
-    environment: production
 
     steps:
     - uses: actions/checkout@v3
@@ -51,9 +55,12 @@ jobs:
       with:
         version: v3.12.2
 
+    - name: Prepare Scripts
+      run: |
+        chmod +x ./scripts/*.sh
+
     - name: Deploy Services
       run: |
-        chmod +x ./scripts/deploy_all_services.sh
         ./scripts/deploy_all_services.sh
       env:
         KUBECONFIG: /home/runner/.kube/config
@@ -61,18 +68,15 @@ jobs:
 
     - name: Validate Deployments
       run: |
-        chmod +x ./scripts/validate_deploy.sh
         for service in api-gateway identity product cart order payment; do
           SERVICE=$service ./scripts/validate_deploy.sh
         done
 
     - name: Run Smoke Tests
       run: |
-        chmod +x ./scripts/smoke_test_all_services.sh
         ./scripts/smoke_test_all_services.sh
 
     - name: Rollback on Failure
       if: failure()
       run: |
-        chmod +x ./scripts/destroy_all.sh
         ./scripts/destroy_all.sh
