@@ -38,7 +38,7 @@ services:
   identity:
     enabled: true
     name: identity-service
-    image: "identity-service:latest"
+    image: "identity:latest"
     replicaCount: 1
     containerPort: 9000
     usesDb: true
@@ -59,7 +59,7 @@ services:
   product:
     enabled: true
     name: product-service
-    image: "product-service:latest"
+    image: "product:latest"
     replicaCount: 1
     containerPort: 9001
     usesDb: true
@@ -80,7 +80,7 @@ services:
   cart:
     enabled: true
     name: cart-service
-    image: "cart-service:latest"
+    image: "cart:latest"
     replicaCount: 1
     containerPort: 9002
     usesDb: true
@@ -101,7 +101,7 @@ services:
   order:
     enabled: true
     name: order-service
-    image: "order-service:latest"
+    image: "order:latest"
     replicaCount: 1
     containerPort: 9003
     usesDb: true
@@ -122,7 +122,7 @@ services:
   payment:
     enabled: true
     name: payment-service
-    image: "payment-service:latest"
+    image: "payment:latest"
     replicaCount: 1
     containerPort: 9004
     usesDb: true
