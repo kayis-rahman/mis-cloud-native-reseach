@@ -42,4 +42,4 @@ Notes
 - The Dockerfiles leverage Maven cache mounts and go-offline to speed up builds.
 - Each image runs as a non-root user (spring) to improve container security.
 - The runtime image is JRE-only and Alpine-based to minimize size.
-- Tests executed during the Dockerfile "test" stage run with -DdisableTestcontainers=true, which switches integration tests to an H2 in-memory database. This avoids requiring a Docker daemon during docker build. Local runs (mvn test) still use Testcontainers by default.
+- Tests run against an in-memory H2 database. Use scripts/run_tests.sh to execute tests inside a Maven container without requiring access to the host Docker daemon.

@@ -7,7 +7,7 @@ COPY src ./src
 
 # Test stage for dockerized test runs
 FROM builder AS test
-RUN --mount=type=cache,target=/root/.m2 mvn -q -e -DskipTests=false -DdisableTestcontainers=true test
+RUN --mount=type=cache,target=/root/.m2 mvn -q -e -DskipTests=false test
 
 # Package stage (skip tests here)
 FROM builder AS package
