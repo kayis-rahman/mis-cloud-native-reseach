@@ -20,7 +20,7 @@ fi
 VALUES=( )
 for svc in identity product cart order payment api-gateway; do
   VALUES+=( --set services.${svc}.enabled=true )
-  img_var="IMG_$(printf "%s" "$svc" | tr '[:lower:]' '[:upper:]')" # IMG_IDENTITY etc
+  img_var="IMG_$(printf "%s" "$svc" | tr '[:lower:]' '[:upper:]' | tr '-' '_')" # IMG_IDENTITY, IMG_API_GATEWAY etc
   if [[ -n "${!img_var:-}" ]]; then
     # Per-service explicit image override
     VALUES+=( --set-string services.${svc}.image=${!img_var} )
