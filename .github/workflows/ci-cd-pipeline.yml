@@ -281,69 +281,69 @@ jobs:
 #        name: coverage-${{ matrix.service }}
 #        path: services/${{ matrix.service }}/target/site/jacoco/
 
-#  # Job 3: Build and Push Container Images
-#  build-images:
-#    name: Build & Push Images
-#    runs-on: ubuntu-latest
-#    needs: [code-quality]
-#    if: github.event_name != 'pull_request'
-#    outputs:
-#      image-tag: ${{ steps.meta.outputs.tags }}
-#    steps:
-#    - name: Checkout code
-#      uses: actions/checkout@v4
-#
-#    - name: Set up Docker Buildx
-#      uses: docker/setup-buildx-action@v3
-#
-#    - name: Extract metadata
-#      id: meta
-#      run: |
-#        if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-#          TAG="latest"
-#        elif [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
-#          TAG="develop"
-#        else
-#          TAG="${{ github.sha }}"
-#        fi
-#        echo "tags=$TAG" >> $GITHUB_OUTPUT
-#        echo "IMAGE_TAG=$TAG" >> $GITHUB_ENV
-#
-#    - name: Log in to Container Registry
-#      uses: docker/login-action@v3
-#      with:
-#        registry: ${{ env.REGISTRY }}
-#        username: ${{ github.actor }}
-#        password: ${{ secrets.GITHUB_TOKEN }}
-#
-#    - name: Build and push images with new format
-#      run: |
-#        services=("identity" "product" "cart" "order" "payment" "api-gateway")
-#
-#        for service in "${services[@]}"; do
-#          echo "Building and pushing $service with new image format..."
-#          cd services/$service
-#
-#          IMAGE="${{ env.IMAGE_REPOSITORY }}/${service}:${{ env.IMAGE_TAG }}"
-#
-#          echo "Building image: $IMAGE"
-#          docker build -t "$IMAGE" .
-#
-#          echo "Pushing image: $IMAGE"
-#          docker push "$IMAGE"
-#          echo "✅ Successfully pushed $IMAGE"
-#
-#          cd ../..
-#        done
-#
-#    - name: Security scan images
-#      run: |
-#        chmod +x scripts/scan_security.sh
-#        for service in identity product cart order payment api-gateway; do
-#          echo "Scanning image: ${{ env.IMAGE_REPOSITORY }}/${service}:${{ env.IMAGE_TAG }}"
-#          IMAGE="${{ env.IMAGE_REPOSITORY }}/${service}:${{ env.IMAGE_TAG }}" \
-#            NO_PROGRESS=1 ./scripts/scan_security.sh
-#        done
+  # Job 3: Build and Push Container Images
+  build-images:
+    name: Build & Push Images
+    runs-on: ubuntu-latest
+    needs: [code-quality]
+    if: github.event_name != 'pull_request'
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Extract metadata
+      id: meta
+      run: |
+        if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+          TAG="latest"
+        elif [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
+          TAG="develop"
+        else
+          TAG="${{ github.sha }}"
+        fi
+        echo "tags=$TAG" >> $GITHUB_OUTPUT
+        echo "IMAGE_TAG=$TAG" >> $GITHUB_ENV
+
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Build and push images with new format
+      run: |
+        services=("identity" "product" "cart" "order" "payment" "api-gateway")
+
+        for service in "${services[@]}"; do
+          echo "Building and pushing $service with new image format..."
+          cd services/$service
+
+          IMAGE="${{ env.IMAGE_REPOSITORY }}/${service}:${{ env.IMAGE_TAG }}"
+
+          echo "Building image: $IMAGE"
+          docker build -t "$IMAGE" .
+
+          echo "Pushing image: $IMAGE"
+          docker push "$IMAGE"
+          echo "✅ Successfully pushed $IMAGE"
+
+          cd ../..
+        done
+
+    - name: Security scan images
+      run: |
+        chmod +x scripts/scan_security.sh
+        for service in identity product cart order payment api-gateway; do
+          echo "Scanning image: ${{ env.IMAGE_REPOSITORY }}/${service}:${{ env.IMAGE_TAG }}"
+          IMAGE="${{ env.IMAGE_REPOSITORY }}/${service}:${{ env.IMAGE_TAG }}" \
+            NO_PROGRESS=1 ./scripts/scan_security.sh
+        done
 
   # Job 4: Deploy to Staging
   deploy-staging:
