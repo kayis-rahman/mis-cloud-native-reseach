@@ -83,6 +83,42 @@ jobs:
       with:
         credentials_json: ${{ secrets.GCP_SA_KEY }}
 
+    - name: Validate Google Cloud Authentication
+      run: |
+        echo "🔐 Validating Google Cloud Authentication..."
+        
+        # Check if gcloud is authenticated
+        if gcloud auth list --filter=status:ACTIVE --format="value(account)" | grep -q "."; then
+          echo "✅ Successfully authenticated with Google Cloud"
+          
+          # Display active account info
+          echo "📋 Active account:"
+          gcloud auth list --filter=status:ACTIVE --format="table(account,status)"
+          
+          # Test project access
+          echo "🔍 Testing project access..."
+          if gcloud projects describe ${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }} --quiet; then
+            echo "✅ Successfully accessed project: ${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}"
+          else
+            echo "❌ Failed to access project. Check service account permissions."
+            exit 1
+          fi
+          
+          # Test API access (basic test)
+          echo "🧪 Testing basic API access..."
+          if gcloud services list --limit=1 --quiet >/dev/null 2>&1; then
+            echo "✅ Service account has basic API access"
+          else
+            echo "⚠️  Limited API access - may need additional permissions for infrastructure setup"
+          fi
+          
+        else
+          echo "❌ Authentication failed - no active accounts found"
+          echo "Debug info:"
+          gcloud auth list
+          exit 1
+        fi
+
     - name: Set up Google Cloud SDK
       uses: google-github-actions/setup-gcloud@v2
       with:
