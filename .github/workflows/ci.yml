@@ -1,0 +1,138 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'services/**'
+      - 'helm/**'
+      - 'terraform/**'
+  pull_request:
+    branches: [ main ]
+
+env:
+  REGISTRY: ghcr.io
+  GHCR_OWNER: ${{ github.repository_owner }}
+  GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  JAVA_VERSION: '17'
+  MAVEN_OPTS: '-Dmaven.repo.local=.m2/repository'
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [api-gateway, identity, product, cart, order, payment]
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up JDK
+      uses: actions/setup-java@v3
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: 'temurin'
+        cache: 'maven'
+    
+    - name: Cache Maven packages
+      uses: actions/cache@v3
+      with:
+        path: .m2/repository
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-maven-
+    
+    - name: Build and Test
+      working-directory: services/${{ matrix.service }}
+      run: |
+        mvn -B clean verify
+        
+    - name: Run Integration Tests
+      working-directory: services/${{ matrix.service }}
+      run: |
+        ../scripts/run_tests.sh
+        
+    - name: Upload Test Results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-results-${{ matrix.service }}
+        path: services/${{ matrix.service }}/target/surefire-reports
+
+  security-scan:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      matrix:
+        service: [api-gateway, identity, product, cart, order, payment]
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v2
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+    
+    - name: Build Docker image
+      env:
+        SERVICE: ${{ matrix.service }}
+      run: |
+        ./scripts/docker-build.sh
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: '${{ env.REGISTRY }}/${{ env.GHCR_OWNER }}/${{ matrix.service }}:latest'
+        format: 'table'
+        exit-code: '1'
+        ignore-unfixed: true
+        vuln-type: 'os,library'
+        severity: 'CRITICAL,HIGH'
+
+  code-quality:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up JDK
+      uses: actions/setup-java@v3
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: 'temurin'
+    
+    - name: Run Code Quality Checks
+      run: |
+        mvn -B checkstyle:check spotbugs:check
+
+  terraform-validate:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v2
+    
+    - name: Terraform Init
+      working-directory: ./terraform
+      run: terraform init -backend=false
+
+    - name: Terraform Format Check
+      working-directory: ./terraform
+      run: terraform fmt -check
+    
+    - name: Terraform Validate
+      working-directory: ./terraform
+      run: terraform validate

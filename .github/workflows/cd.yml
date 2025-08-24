@@ -1,0 +1,78 @@
+name: CD Pipeline
+
+on:
+  workflow_run:
+    workflows: ["CI Pipeline"]
+    types:
+      - completed
+    branches: [ main ]
+
+env:
+  REGISTRY: ghcr.io
+  GHCR_OWNER: ${{ github.repository_owner }}
+  GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GCP_PROJECT: ${{ secrets.GCP_PROJECT }}
+  GKE_CLUSTER: mis-cloud-native
+  GKE_ZONE: us-central1-a
+  GCP_REGION: us-central1
+
+jobs:
+  deploy-to-gke:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    environment: production
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - id: 'auth'
+      name: 'Authenticate to Google Cloud'
+      uses: 'google-github-actions/auth@v1'
+      with:
+        credentials_json: '${{ secrets.GCP_SA_KEY }}'
+        project_id: '${{ secrets.GCP_PROJECT }}'
+
+    - name: 'Set up Cloud SDK'
+      uses: 'google-github-actions/setup-gcloud@v1'
+
+    - name: 'Get GKE credentials'
+      run: |-
+        gcloud container clusters get-credentials "$GKE_CLUSTER" --zone "$GKE_ZONE" --project "$GCP_PROJECT"
+
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v2
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Setup Helm
+      uses: azure/setup-helm@v3
+      with:
+        version: v3.12.2
+
+    - name: Deploy Services
+      run: |
+        chmod +x ./scripts/deploy_all_services.sh
+        ./scripts/deploy_all_services.sh
+      env:
+        KUBECONFIG: /home/runner/.kube/config
+        HELM_EXPERIMENTAL_OCI: 1
+
+    - name: Validate Deployments
+      run: |
+        chmod +x ./scripts/validate_deploy.sh
+        for service in api-gateway identity product cart order payment; do
+          SERVICE=$service ./scripts/validate_deploy.sh
+        done
+
+    - name: Run Smoke Tests
+      run: |
+        chmod +x ./scripts/smoke_test_all_services.sh
+        ./scripts/smoke_test_all_services.sh
+
+    - name: Rollback on Failure
+      if: failure()
+      run: |
+        chmod +x ./scripts/destroy_all.sh
+        ./scripts/destroy_all.sh
