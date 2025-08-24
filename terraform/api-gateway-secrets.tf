@@ -20,13 +20,7 @@ resource "kubernetes_secret" "api_gateway_security" {
     namespace = var.k8s_namespace
   }
   data = {
-    apiKeys = jsondecode(data.google_secret_manager_secret_version.api_gateway_security.secret_data)["apiKeys"]
+    apiKeys = jsondecode(google_secret_manager_secret_version.api_gateway_security.secret_data)["apiKeys"]
   }
   depends_on = [google_container_node_pool.primary]
-}
-
-# Data source to read the secrets
-data "google_secret_manager_secret_version" "api_gateway_security" {
-  secret = google_secret_manager_secret.api_gateway_security.id
-  version = "latest"
 }
