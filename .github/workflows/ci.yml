@@ -7,6 +7,8 @@ on:
       - 'services/**'
       - 'helm/**'
       - 'terraform/**'
+      - '.github/workflows/**'
+      - 'scripts/**'
   pull_request:
     branches: [ main ]
 

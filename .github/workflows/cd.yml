@@ -1,6 +1,14 @@
 name: CD Pipeline
 
 on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'services/**'
+      - 'helm/**'
+      - 'terraform/**'
+      - '.github/workflows/**'
+      - 'scripts/**'
   workflow_run:
     workflows: ["CI Pipeline"]
     types:
