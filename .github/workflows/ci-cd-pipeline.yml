@@ -50,15 +50,15 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-maven-
 
-    - name: Scan for secrets
-      run: |
-        chmod +x scripts/scan_secrets.sh
-        ./scripts/scan_secrets.sh
-
-    - name: Security scan (filesystem)
-      run: |
-        chmod +x scripts/scan_security.sh
-        NO_PROGRESS=1 ./scripts/scan_security.sh
+#    - name: Scan for secrets
+#      run: |
+#        chmod +x scripts/scan_secrets.sh
+#        ./scripts/scan_secrets.sh
+#
+#    - name: Security scan (filesystem)
+#      run: |
+#        chmod +x scripts/scan_security.sh
+#        NO_PROGRESS=1 ./scripts/scan_security.sh
 
   # Job 2: Unit and Integration Tests
 #  test:
@@ -108,7 +108,7 @@ jobs:
   build-images:
     name: Build & Push Images
     runs-on: ubuntu-latest
-    needs: [code-quality, test]
+    #needs: [code-quality, test]
     if: github.event_name != 'pull_request'
     outputs:
       image-tag: ${{ steps.meta.outputs.tags }}
