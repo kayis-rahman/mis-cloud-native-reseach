@@ -106,6 +106,8 @@ jobs:
       env:
         TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
         TF_VAR_gcp_region: ${{ secrets.GCP_REGION || 'us-central1' }}
+        TF_VAR_gcp_zone: ${{ secrets.GCP_ZONE || 'us-central1-a' }}
+        TF_VAR_project_name: "mis-cloud-native"
 
     - name: Create base infrastructure
       run: |
@@ -114,6 +116,12 @@ jobs:
       env:
         TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
         TF_VAR_gcp_region: ${{ secrets.GCP_REGION || 'us-central1' }}
+        TF_VAR_gcp_zone: ${{ secrets.GCP_ZONE || 'us-central1-a' }}
+        TF_VAR_project_name: "mis-cloud-native"
+        TF_VAR_network_cidr: "10.0.0.0/16"
+        TF_VAR_gke_version: "1.29"
+        TF_VAR_db_username: "misadmin"
+        TF_VAR_db_tier: "db-f1-micro"
 
     - name: Create databases
       run: |
@@ -122,6 +130,10 @@ jobs:
       env:
         TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
         TF_VAR_gcp_region: ${{ secrets.GCP_REGION || 'us-central1' }}
+        TF_VAR_gcp_zone: ${{ secrets.GCP_ZONE || 'us-central1-a' }}
+        TF_VAR_project_name: "mis-cloud-native"
+        TF_VAR_db_username: "misadmin"
+        TF_VAR_db_tier: "db-f1-micro"
 
     - name: Create Kubernetes secrets
       run: |
@@ -129,10 +141,13 @@ jobs:
         ./scripts/create_secrets.sh
       env:
         TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
+        TF_VAR_gcp_region: ${{ secrets.GCP_REGION || 'us-central1' }}
+        TF_VAR_project_name: "mis-cloud-native"
         GHCR_OWNER: ${{ github.repository_owner }}
         GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         GHCR_TOKEN_SECRET_ID: ghcr-pat
         NAMESPACE: default
+        TF_DIR: terraform
         DB_PASSWORD: ${{ github.ref == 'refs/heads/main' && secrets.DB_PASSWORD_PRODUCTION || secrets.DB_PASSWORD_STAGING }}
         JWT_SECRET: ${{ github.ref == 'refs/heads/main' && secrets.JWT_SECRET_PRODUCTION || secrets.JWT_SECRET_STAGING }}
 
@@ -142,6 +157,8 @@ jobs:
         ./scripts/validate_infra.sh
       env:
         TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
+        TF_VAR_gcp_region: ${{ secrets.GCP_REGION || 'us-central1' }}
+        TF_VAR_project_name: "mis-cloud-native"
 
     - name: Export infrastructure outputs
       id: infra-outputs
@@ -152,6 +169,7 @@ jobs:
         echo "project-id=$(terraform output -raw project_id)" >> $GITHUB_OUTPUT
       env:
         TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
+        TF_VAR_gcp_region: ${{ secrets.GCP_REGION || 'us-central1' }}
 
 # Temporary commanding Tests since it's working properly
 # Job 2: Unit and Integration Tests
@@ -199,102 +217,102 @@ jobs:
 #        path: services/${{ matrix.service }}/target/site/jacoco/
 
   # Job 3: Build and Push Container Images
-  build-images:
-    name: Build & Push Images
-    runs-on: ubuntu-latest
-#    needs: [code-quality, test]
-    if: github.event_name != 'pull_request'
-    outputs:
-      image-tag: ${{ steps.meta.outputs.tags }}
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-
-    - name: Extract metadata
-      id: meta
-      run: |
-        # Convert repository owner to lowercase for GHCR compatibility
-        REPO_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-        echo "GHCR_OWNER_LOWER=${REPO_OWNER}" >> $GITHUB_ENV
-        
-        if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-          TAG="latest"
-        elif [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
-          TAG="develop"
-        else
-          TAG="${{ github.sha }}"
-        fi
-        echo "tags=$TAG" >> $GITHUB_OUTPUT
-        echo "IMAGE_TAG=$TAG" >> $GITHUB_ENV
-
-    # Alternative approach: Try using username/repo format instead of just username
-    - name: Log in to Container Registry with alternative namespace
-      uses: docker/login-action@v3
-      with:
-        registry: ${{ env.REGISTRY }}
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Build and push with repository-scoped namespace
-      run: |
-        services=("identity" "product" "cart" "order" "payment" "api-gateway")
-        
-        # Use repository-scoped naming: ghcr.io/owner/repo/service instead of ghcr.io/owner/service
-        REPO_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f2 | tr '[:upper:]' '[:lower:]')
-        
-        for service in "${services[@]}"; do
-          echo "Building and pushing $service with repository-scoped naming..."
-          cd services/$service
-          
-          # Try repository-scoped namespace first
-          REPO_SCOPED_IMAGE="ghcr.io/${{ env.GHCR_OWNER_LOWER }}/${REPO_NAME}/${service}:${{ env.IMAGE_TAG }}"
-          
-          echo "Building image: $REPO_SCOPED_IMAGE"
-          docker build -t "$REPO_SCOPED_IMAGE" .
-          
-          echo "Attempting to push: $REPO_SCOPED_IMAGE"
-          if docker push "$REPO_SCOPED_IMAGE"; then
-            echo "✅ Successfully pushed $REPO_SCOPED_IMAGE"
-          else
-            echo "Repository-scoped push failed, trying direct namespace..."
-            
-            # Fallback to direct namespace
-            DIRECT_IMAGE="ghcr.io/${{ env.GHCR_OWNER_LOWER }}/${service}:${{ env.IMAGE_TAG }}"
-            docker tag "$REPO_SCOPED_IMAGE" "$DIRECT_IMAGE"
-            
-            if docker push "$DIRECT_IMAGE"; then
-              echo "✅ Successfully pushed $DIRECT_IMAGE"
-            else
-              echo "❌ Both push methods failed for $service"
-              echo "Debugging information:"
-              echo "  Repository: ${{ github.repository }}"
-              echo "  Actor: ${{ github.actor }}"
-              echo "  Owner (lowercase): ${{ env.GHCR_OWNER_LOWER }}"
-              echo "  Repository name: ${REPO_NAME}"
-              echo "  Attempted images:"
-              echo "    - $REPO_SCOPED_IMAGE"
-              echo "    - $DIRECT_IMAGE"
-              
-              # Check if we can see any existing packages
-              echo "Checking existing packages (if any):"
-              curl -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-                   -H "Accept: application/vnd.github.v3+json" \
-                   "https://api.github.com/user/packages?package_type=container" || echo "Could not list packages"
-              
-              exit 1
-            fi
-          fi
-          
-          cd ../..
-        done
-
-    - name: Clean up test image
-      run: |
-        # Remove the test image to clean up
-        docker rmi ghcr.io/${{ env.GHCR_OWNER_LOWER }}/test:${{ env.IMAGE_TAG }} || true
+#  build-images:
+#    name: Build & Push Images
+#    runs-on: ubuntu-latest
+##    needs: [code-quality, test]
+#    if: github.event_name != 'pull_request'
+#    outputs:
+#      image-tag: ${{ steps.meta.outputs.tags }}
+#    steps:
+#    - name: Checkout code
+#      uses: actions/checkout@v4
+#
+#    - name: Set up Docker Buildx
+#      uses: docker/setup-buildx-action@v3
+#
+#    - name: Extract metadata
+#      id: meta
+#      run: |
+#        # Convert repository owner to lowercase for GHCR compatibility
+#        REPO_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+#        echo "GHCR_OWNER_LOWER=${REPO_OWNER}" >> $GITHUB_ENV
+#
+#        if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+#          TAG="latest"
+#        elif [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
+#          TAG="develop"
+#        else
+#          TAG="${{ github.sha }}"
+#        fi
+#        echo "tags=$TAG" >> $GITHUB_OUTPUT
+#        echo "IMAGE_TAG=$TAG" >> $GITHUB_ENV
+#
+#    # Alternative approach: Try using username/repo format instead of just username
+#    - name: Log in to Container Registry with alternative namespace
+#      uses: docker/login-action@v3
+#      with:
+#        registry: ${{ env.REGISTRY }}
+#        username: ${{ github.actor }}
+#        password: ${{ secrets.GITHUB_TOKEN }}
+#
+#    - name: Build and push with repository-scoped namespace
+#      run: |
+#        services=("identity" "product" "cart" "order" "payment" "api-gateway")
+#
+#        # Use repository-scoped naming: ghcr.io/owner/repo/service instead of ghcr.io/owner/service
+#        REPO_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f2 | tr '[:upper:]' '[:lower:]')
+#
+#        for service in "${services[@]}"; do
+#          echo "Building and pushing $service with repository-scoped naming..."
+#          cd services/$service
+#
+#          # Try repository-scoped namespace first
+#          REPO_SCOPED_IMAGE="ghcr.io/${{ env.GHCR_OWNER_LOWER }}/${REPO_NAME}/${service}:${{ env.IMAGE_TAG }}"
+#
+#          echo "Building image: $REPO_SCOPED_IMAGE"
+#          docker build -t "$REPO_SCOPED_IMAGE" .
+#
+#          echo "Attempting to push: $REPO_SCOPED_IMAGE"
+#          if docker push "$REPO_SCOPED_IMAGE"; then
+#            echo "✅ Successfully pushed $REPO_SCOPED_IMAGE"
+#          else
+#            echo "Repository-scoped push failed, trying direct namespace..."
+#
+#            # Fallback to direct namespace
+#            DIRECT_IMAGE="ghcr.io/${{ env.GHCR_OWNER_LOWER }}/${service}:${{ env.IMAGE_TAG }}"
+#            docker tag "$REPO_SCOPED_IMAGE" "$DIRECT_IMAGE"
+#
+#            if docker push "$DIRECT_IMAGE"; then
+#              echo "✅ Successfully pushed $DIRECT_IMAGE"
+#            else
+#              echo "❌ Both push methods failed for $service"
+#              echo "Debugging information:"
+#              echo "  Repository: ${{ github.repository }}"
+#              echo "  Actor: ${{ github.actor }}"
+#              echo "  Owner (lowercase): ${{ env.GHCR_OWNER_LOWER }}"
+#              echo "  Repository name: ${REPO_NAME}"
+#              echo "  Attempted images:"
+#              echo "    - $REPO_SCOPED_IMAGE"
+#              echo "    - $DIRECT_IMAGE"
+#
+#              # Check if we can see any existing packages
+#              echo "Checking existing packages (if any):"
+#              curl -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+#                   -H "Accept: application/vnd.github.v3+json" \
+#                   "https://api.github.com/user/packages?package_type=container" || echo "Could not list packages"
+#
+#              exit 1
+#            fi
+#          fi
+#
+#          cd ../..
+#        done
+#
+#    - name: Clean up test image
+#      run: |
+#        # Remove the test image to clean up
+#        docker rmi ghcr.io/${{ env.GHCR_OWNER_LOWER }}/test:${{ env.IMAGE_TAG }} || true
 
 #    - name: Security scan images
 #      run: |
@@ -309,7 +327,7 @@ jobs:
   deploy-staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest
-    needs: [infrastructure, build-images]
+   # needs: [infrastructure, build-images]
     if: github.ref == 'refs/heads/develop' || github.event_name == 'workflow_dispatch'
     environment: staging
     steps:

@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+# Local Environment Setup for Infrastructure Scripts
+# This script sets up the environment variables needed to run infrastructure scripts locally
+#
+# Usage:
+#   1. Copy this file: cp setup-local-env.sh.example setup-local-env.sh
+#   2. Edit setup-local-env.sh with your actual values
+#   3. Source it: source setup-local-env.sh
+#   4. Run infrastructure scripts: ./scripts/create_infra.sh
+
+# =============================================================================
+# REQUIRED: GCP Configuration
+# =============================================================================
+
+# Your GCP Project ID (REQUIRED)
+export TF_VAR_gcp_project_id="your-gcp-project-id-here"
+
+# GCP Region (optional, defaults to us-central1)
+export TF_VAR_gcp_region="us-central1"
+
+# GCP Zone (optional, defaults to us-central1-a)
+export TF_VAR_gcp_zone="us-central1-a"
+
+# =============================================================================
+# OPTIONAL: Infrastructure Configuration
+# =============================================================================
+
+# Project name prefix for resources (optional)
+export TF_VAR_project_name="mis-cloud-native"
+
+# VPC Network CIDR (optional)
+export TF_VAR_network_cidr="10.0.0.0/16"
+
+# GKE Kubernetes version (optional)
+export TF_VAR_gke_version="1.29"
+
+# =============================================================================
+# OPTIONAL: Database Configuration
+# =============================================================================
+
+# Database username (optional, defaults to misadmin)
+export TF_VAR_db_username="misadmin"
+
+# Database password (optional, will be auto-generated if not set)
+# export TF_VAR_db_password="your-secure-password-here"
+
+# Database tier (optional, defaults to db-f1-micro)
+export TF_VAR_db_tier="db-f1-micro"
+
+# =============================================================================
+# GITHUB CONTAINER REGISTRY (for create_secrets.sh)
+# =============================================================================
+
+# Your GitHub username or organization
+export GHCR_OWNER="your-github-username"
+
+# GitHub Personal Access Token with packages:read permission
+# Generate at: https://github.com/settings/tokens
+export GHCR_TOKEN="your-github-pat-here"
+
+# Secret Manager secret ID for GHCR token
+export GHCR_TOKEN_SECRET_ID="ghcr-pat"
+
+# Kubernetes namespace (optional, defaults to default)
+export NAMESPACE="default"
+
+# =============================================================================
+# VERIFICATION
+# =============================================================================
+
+echo "Environment variables set:"
+echo "  TF_VAR_gcp_project_id: ${TF_VAR_gcp_project_id}"
+echo "  TF_VAR_gcp_region: ${TF_VAR_gcp_region}"
+echo "  TF_VAR_gcp_zone: ${TF_VAR_gcp_zone}"
+echo "  GHCR_OWNER: ${GHCR_OWNER}"
+echo ""
+echo "To run infrastructure setup:"
+echo "  1. ./scripts/bootstrap_state.sh    # (optional, for remote state)"
+echo "  2. ./scripts/create_infra.sh       # Create GCP infrastructure"
+echo "  3. ./scripts/create_db.sh          # Create databases"
+echo "  4. ./scripts/create_secrets.sh     # Create Kubernetes secrets"
+echo "  5. ./scripts/validate_infra.sh     # Validate setup"
