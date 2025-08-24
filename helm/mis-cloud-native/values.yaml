@@ -38,7 +38,7 @@ services:
   identity:
     enabled: true
     name: identity-service
-    image: "sparkage/identity-service:latest"
+    image: "$GHCR_OWNER/identity-service:latest"
     replicaCount: 1
     containerPort: 9000
     usesDb: true
@@ -59,7 +59,7 @@ services:
   product:
     enabled: true
     name: product-service
-    image: "sparkage/product-service:latest"
+    image: "$GHCR_OWNER/product-service:latest"
     replicaCount: 1
     containerPort: 9001
     usesDb: true
@@ -80,7 +80,7 @@ services:
   cart:
     enabled: true
     name: cart-service
-    image: "sparkage/cart-service:latest"
+    image: "$GHCR_OWNER/cart-service:latest"
     replicaCount: 1
     containerPort: 9002
     usesDb: true
@@ -101,7 +101,7 @@ services:
   order:
     enabled: true
     name: order-service
-    image: "sparkage/order-service:latest"
+    image: "$GHCR_OWNER/order-service:latest"
     replicaCount: 1
     containerPort: 9003
     usesDb: true
@@ -122,7 +122,7 @@ services:
   payment:
     enabled: true
     name: payment-service
-    image: "sparkage/payment-service:latest"
+    image: "$GHCR_OWNER/payment-service:latest"
     replicaCount: 1
     containerPort: 9004
     usesDb: true
