@@ -1,7 +1,40 @@
 spring:
   cloud:
     gateway:
-      enabled: false
+      # Enable gateway for integration tests
+      enabled: true
+      routes:
+        # Test routes with mock backends
+        - id: test-cart
+          uri: http://httpbin.org
+          predicates:
+            - Path=/api/cart/**
+          filters:
+            - StripPrefix=2
+        - id: test-products
+          uri: http://httpbin.org
+          predicates:
+            - Path=/api/products/**
+          filters:
+            - StripPrefix=2
+        - id: test-identity
+          uri: http://httpbin.org
+          predicates:
+            - Path=/api/identity/**
+          filters:
+            - StripPrefix=2
+        - id: test-orders
+          uri: http://httpbin.org
+          predicates:
+            - Path=/api/orders/**
+          filters:
+            - StripPrefix=2
+        - id: test-payments
+          uri: http://httpbin.org
+          predicates:
+            - Path=/api/payments/**
+          filters:
+            - StripPrefix=2
     discovery:
       enabled: false
   security:
@@ -12,3 +45,10 @@ spring:
   main:
     web-application-type: reactive
 
+# Override security settings for tests
+security:
+  api-keys: test-key
+  header-name: X-API-Key
+  allowlist-paths:
+    - /actuator/health
+    - /actuator/info

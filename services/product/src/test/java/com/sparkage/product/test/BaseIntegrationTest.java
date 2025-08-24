@@ -2,6 +2,7 @@ package com.sparkage.product.test;
 
 import org.junit.jupiter.api.TestInstance;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
@@ -9,6 +10,7 @@ import org.springframework.test.context.DynamicPropertySource;
  * Base class for integration tests using an in-memory H2 database for the product service.
  */
 @SpringBootTest
+@ActiveProfiles("test")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public abstract class BaseIntegrationTest {
 
