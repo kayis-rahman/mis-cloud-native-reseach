@@ -48,10 +48,9 @@ jobs:
       run: mvn -B test
 
     - name: Run Integration Tests
-      working-directory: services/${{ matrix.service }}
       run: |
-        chmod +x ../scripts/run_tests.sh
-        ../scripts/run_tests.sh
+        chmod +x ./scripts/run_tests.sh
+        ./scripts/run_tests.sh ${{ matrix.service }}
 
     - name: Upload Test Results
       if: always()
