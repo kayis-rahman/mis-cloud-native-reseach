@@ -20,8 +20,7 @@ import com.sparkage.identity.service.UserRepository;
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@org.springframework.test.context.ActiveProfiles("test")
-class UserControllerTest {
+class UserControllerTest extends com.sparkage.identity.test.BaseIntegrationTest {
 
     @Autowired
     private RoleRepository roleRepository;

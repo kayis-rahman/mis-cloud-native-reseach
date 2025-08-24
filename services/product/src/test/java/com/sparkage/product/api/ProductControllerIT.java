@@ -22,7 +22,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-class ProductControllerIT {
+class ProductControllerIT extends com.sparkage.product.test.BaseIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;

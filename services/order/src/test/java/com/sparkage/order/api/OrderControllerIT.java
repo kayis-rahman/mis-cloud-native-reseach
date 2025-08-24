@@ -20,7 +20,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-class OrderControllerIT {
+class OrderControllerIT extends com.sparkage.order.test.BaseIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;

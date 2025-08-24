@@ -4,13 +4,20 @@ WORKDIR /workspace
 COPY pom.xml ./
 RUN --mount=type=cache,target=/root/.m2 mvn -q -e -DskipTests dependency:go-offline
 COPY src ./src
+
+# Dedicated test stage so CI can run tests via docker build --target test
+FROM builder AS test
+RUN --mount=type=cache,target=/root/.m2 mvn -q -e -DskipTests=false test
+
+# Build artifact (skip tests here since they ran in the test stage)
+FROM builder AS package
 RUN --mount=type=cache,target=/root/.m2 mvn -q -e -DskipTests package
 
 FROM eclipse-temurin:17-jre-alpine
 ENV JAVA_OPTS="-XX:MaxRAMPercentage=75 -XX:+UseContainerSupport -Djava.security.egd=file:/dev/./urandom"
 WORKDIR /app
 RUN addgroup -S spring && adduser -S spring -G spring
-COPY --from=builder /workspace/target/*.jar /app/app.jar
+COPY --from=package /workspace/target/*.jar /app/app.jar
 EXPOSE 9000
 USER spring:spring
 ENTRYPOINT ["sh","-c","exec java $JAVA_OPTS -jar /app/app.jar"]

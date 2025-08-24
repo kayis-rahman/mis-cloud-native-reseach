@@ -6,8 +6,15 @@ WORKDIR /workspace
 COPY pom.xml ./
 # Pre-download dependencies (no source yet)
 RUN --mount=type=cache,target=/root/.m2 mvn -q -e -DskipTests dependency:go-offline
-# Copy sources and build
+# Copy sources
 COPY src ./src
+
+# Test stage: run unit/integration tests
+FROM builder AS test
+RUN --mount=type=cache,target=/root/.m2 mvn -q -e -DskipTests=false test
+
+# Package stage: build jar (skip tests here since test stage already ran)
+FROM builder AS package
 RUN --mount=type=cache,target=/root/.m2 mvn -q -e -DskipTests package
 
 # Runtime stage: minimal JRE image
@@ -17,7 +24,7 @@ WORKDIR /app
 # Create non-root user
 RUN addgroup -S spring && adduser -S spring -G spring
 # Copy fat jar
-COPY --from=builder /workspace/target/*.jar /app/app.jar
+COPY --from=package /workspace/target/*.jar /app/app.jar
 # Reduce image attack surface
 EXPOSE 9001
 USER spring:spring
