@@ -86,7 +86,7 @@ jobs:
     - name: Set up Google Cloud SDK
       uses: google-github-actions/setup-gcloud@v2
       with:
-        project_id: ${{ secrets.GCP_PROJECT_ID }}
+        project_id: ${{ secrets.GCP_PROJECT }}
 
     - name: Install Terraform
       uses: hashicorp/setup-terraform@v3
@@ -104,7 +104,7 @@ jobs:
         chmod +x scripts/bootstrap_state.sh
         ./scripts/bootstrap_state.sh || echo "State already exists or bootstrap not needed"
       env:
-        TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
+        TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT }}
         TF_VAR_gcp_region: ${{ secrets.GCP_REGION || 'us-central1' }}
         TF_VAR_gcp_zone: ${{ secrets.GCP_ZONE || 'us-central1-a' }}
         TF_VAR_project_name: "mis-cloud-native"
@@ -114,7 +114,7 @@ jobs:
         chmod +x scripts/create_infra.sh
         ./scripts/create_infra.sh
       env:
-        TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
+        TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT }}
         TF_VAR_gcp_region: ${{ secrets.GCP_REGION || 'us-central1' }}
         TF_VAR_gcp_zone: ${{ secrets.GCP_ZONE || 'us-central1-a' }}
         TF_VAR_project_name: "mis-cloud-native"
@@ -128,7 +128,7 @@ jobs:
         chmod +x scripts/create_db.sh
         ./scripts/create_db.sh
       env:
-        TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
+        TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT }}
         TF_VAR_gcp_region: ${{ secrets.GCP_REGION || 'us-central1' }}
         TF_VAR_gcp_zone: ${{ secrets.GCP_ZONE || 'us-central1-a' }}
         TF_VAR_project_name: "mis-cloud-native"
@@ -140,7 +140,7 @@ jobs:
         chmod +x scripts/create_secrets.sh
         ./scripts/create_secrets.sh
       env:
-        TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
+        TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT }}
         TF_VAR_gcp_region: ${{ secrets.GCP_REGION || 'us-central1' }}
         TF_VAR_project_name: "mis-cloud-native"
         GHCR_OWNER: ${{ github.repository_owner }}
@@ -148,15 +148,15 @@ jobs:
         GHCR_TOKEN_SECRET_ID: ghcr-pat
         NAMESPACE: default
         TF_DIR: terraform
-        DB_PASSWORD: ${{ github.ref == 'refs/heads/main' && secrets.DB_PASSWORD_PRODUCTION || secrets.DB_PASSWORD_STAGING }}
-        JWT_SECRET: ${{ github.ref == 'refs/heads/main' && secrets.JWT_SECRET_PRODUCTION || secrets.JWT_SECRET_STAGING }}
+        DB_PASSWORD: ${{ github.ref == 'refs/heads/main' && secrets.DB_PASSWORD_PRODUCTION || secrets.DB_PASSWORD_STAGING || 'temp-password-123' }}
+        JWT_SECRET: ${{ github.ref == 'refs/heads/main' && secrets.JWT_SECRET_PRODUCTION || secrets.JWT_SECRET_STAGING || 'temp-jwt-secret-abc123' }}
 
     - name: Validate infrastructure
       run: |
         chmod +x scripts/validate_infra.sh
         ./scripts/validate_infra.sh
       env:
-        TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
+        TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT }}
         TF_VAR_gcp_region: ${{ secrets.GCP_REGION || 'us-central1' }}
         TF_VAR_project_name: "mis-cloud-native"
 
@@ -168,7 +168,7 @@ jobs:
         echo "cluster-location=$(terraform output -raw cluster_location)" >> $GITHUB_OUTPUT
         echo "project-id=$(terraform output -raw project_id)" >> $GITHUB_OUTPUT
       env:
-        TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT_ID }}
+        TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT }}
         TF_VAR_gcp_region: ${{ secrets.GCP_REGION || 'us-central1' }}
 
 # Temporary commanding Tests since it's working properly
