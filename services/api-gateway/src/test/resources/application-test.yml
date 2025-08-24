@@ -1,0 +1,14 @@
+spring:
+  cloud:
+    gateway:
+      enabled: false
+    discovery:
+      enabled: false
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://test-issuer
+  main:
+    web-application-type: reactive
+
