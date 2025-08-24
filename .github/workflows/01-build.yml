@@ -6,11 +6,6 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
-    inputs:
-      tag:
-        description: "Optional image tag (default: git short sha)"
-        required: false
-        type: string
 
 permissions:
   contents: read
