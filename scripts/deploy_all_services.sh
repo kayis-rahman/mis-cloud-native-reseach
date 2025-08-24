@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-# Deploy all services using images provided via env or defaults.
+# Deploy all services using the new image format.
 # Usage: scripts/deploy_all_services.sh
 
 ROOT_DIR=$(cd "$(dirname "$0")/.." && pwd)
@@ -8,20 +8,10 @@ CHART_PATH="$ROOT_DIR/helm/mis-cloud-native"
 RELEASE="mis"
 NAMESPACE="default"
 
-# Optional registry inputs:
-# - GLOBAL_REGISTRY can be a full registry prefix like ghcr.io/OWNER
-# - GHCR_OWNER sets registry to ghcr.io/${GHCR_OWNER}
-GLOBAL_REGISTRY="${GLOBAL_REGISTRY:-}"
-GHCR_OWNER="${GHCR_OWNER:-}"
-if [[ -z "$GLOBAL_REGISTRY" && -n "$GHCR_OWNER" ]]; then
-  GLOBAL_REGISTRY="ghcr.io/${GHCR_OWNER}"
-fi
+# Use the new fixed image repository format
+IMAGE_REPOSITORY="ghcr.io/kayis-rahman/mis-cloud-native-reseach"
 
 VALUES=( )
-# Set GHCR_OWNER for template variable substitution (without registry prefix)
-if [[ -n "$GHCR_OWNER" ]]; then
-  VALUES+=( --set-string global.ghcrOwner="$GHCR_OWNER" )
-fi
 
 for svc in identity product cart order payment api-gateway; do
   VALUES+=( --set services.${svc}.enabled=true )
@@ -29,24 +19,21 @@ for svc in identity product cart order payment api-gateway; do
   if [[ -n "${!img_var:-}" ]]; then
     # Per-service explicit image override
     VALUES+=( --set-string services.${svc}.image=${!img_var} )
-  elif [[ -n "$GLOBAL_REGISTRY" ]]; then
-    # For services that use $GHCR_OWNER template, don't override - let template handle it
-    case "$svc" in
-      api-gateway|identity|product|cart|order|payment)
-        # These services use $GHCR_OWNER template, skip override
-        ;;
-      *)
-        # Compose full image path from registry and service name for other services
-        VALUES+=( --set-string services.${svc}.image=${GLOBAL_REGISTRY}/${svc}:latest )
-        ;;
-    esac
   else
-    # No override: keep chart default image (may be Docker Hub sparkage/*)
-    :
+    # Use the new image format: ghcr.io/kayis-rahman/mis-cloud-native-reseach/[service]:latest
+    VALUES+=( --set-string services.${svc}.image=${IMAGE_REPOSITORY}/${svc}:latest )
   fi
 done
 
 helm upgrade --install "$RELEASE" "$CHART_PATH" --namespace "$NAMESPACE" "${VALUES[@]}"
 
-# Best-effort status summary
-kubectl -n "$NAMESPACE" get deploy,po,svc || true
+echo "✅ All services deployed with new image format: ${IMAGE_REPOSITORY}/[service]:latest"
+
+# Wait for deployments to be ready
+echo "⏳ Waiting for deployments to be ready..."
+for svc in identity product cart order payment api-gateway; do
+  echo "  Checking $svc..."
+  kubectl wait --for=condition=available --timeout=300s deployment/${RELEASE}-${svc} -n ${NAMESPACE} || echo "⚠️  $svc deployment not ready"
+done
+
+echo "🎉 Deployment complete!"
