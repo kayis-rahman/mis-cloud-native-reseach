@@ -50,10 +50,7 @@ resource "kubernetes_secret" "ghcr_creds" {
     create_before_destroy = true
     ignore_changes = [
       # Ignore metadata changes that don't affect functionality
-      metadata[0].labels,
-      metadata[0].resource_version,
-      metadata[0].uid,
-      metadata[0].generation
+      metadata[0].labels
     ]
   }
 

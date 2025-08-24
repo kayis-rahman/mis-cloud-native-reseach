@@ -1,6 +1,7 @@
 # Optionally create the Secret Manager secret container for GHCR token
 # (value/versions are managed manually by you or via CI).
 
+# Import existing secret or create new one
 resource "google_secret_manager_secret" "ghcr_pat" {
   # Create the secret container if requested OR if a token is provided
   count = (var.ghcr_token_secret_id != "" && (var.create_ghcr_secret || var.ghcr_token != "")) ? 1 : 0
@@ -13,6 +14,8 @@ resource "google_secret_manager_secret" "ghcr_pat" {
   lifecycle {
     # Prevent recreation unless the secret_id changes
     create_before_destroy = true
+    # Don't fail if secret already exists - import it instead
+    prevent_destroy = true
     ignore_changes = [
       # Ignore changes to labels and annotations that might be set externally
       labels,
