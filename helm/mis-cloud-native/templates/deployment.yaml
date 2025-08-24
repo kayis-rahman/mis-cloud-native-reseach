@@ -20,6 +20,8 @@ spec:
         app.kubernetes.io/instance: {{ $.Release.Name }}
         app.kubernetes.io/component: {{ $key }}
     spec:
+      imagePullSecrets:
+        - name: ghcr-secret
       containers:
         - name: {{ $key }}
           image: {{ $svc.image }}
