@@ -26,6 +26,18 @@ spec:
         {{- end }}
       {{- end }}
     spec:
+      {{- if $svc.nodeSelector }}
+      nodeSelector:
+        {{- toYaml $svc.nodeSelector | nindent 8 }}
+      {{- end }}
+      {{- if $svc.tolerations }}
+      tolerations:
+        {{- toYaml $svc.tolerations | nindent 8 }}
+      {{- end }}
+      {{- if $svc.affinity }}
+      affinity:
+        {{- toYaml $svc.affinity | nindent 8 }}
+      {{- end }}
       containers:
         - name: {{ $key }}
           image: {{ $svc.image }}

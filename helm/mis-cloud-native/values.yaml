@@ -49,21 +49,6 @@ environments:
         memory: "1Gi"    # Increased for performance
         cpu: "500m"      # Increased for performance
 
-# Observability configuration
-observability:
-  enabled: true
-  prometheus:
-    enabled: true
-    namespace: observability
-  grafana:
-    enabled: true
-    namespace: observability
-  elk:
-    enabled: true
-    namespace: observability
-  jaeger:
-    enabled: true
-    namespace: observability
 
 # Define microservices here
 services:
@@ -85,6 +70,15 @@ services:
       limits:
         memory: "1Gi"
         cpu: "500m"
+    autoscaling:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 80
+      # targetMemoryUtilizationPercentage: 80
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
     # API Gateway specific configurations
     security:
       apiKeys: "gateway-key-please-change-in-production"
@@ -105,7 +99,7 @@ services:
         value: "{{ .Values.global.environment }}"
       - name: SECURITY_API_KEYS
         valueFrom:
-          secretRef:
+          secretKeyRef:
             name: api-gateway-security
             key: apiKeys
       - name: SECURITY_HEADER_NAME
@@ -125,11 +119,6 @@ services:
         value: "{{ .Values.services.api-gateway.serviceUris.order }}"
       - name: PAYMENT_URI
         value: "{{ .Values.services.api-gateway.serviceUris.payment }}"
-      # Observability configuration
-      - name: JAEGER_ENDPOINT
-        value: "http://jaeger-collector.observability-{{ .Values.global.environment }}:14268/api/traces"
-      - name: ZIPKIN_URL
-        value: "http://jaeger-collector.observability-{{ .Values.global.environment }}:9411"
       # Redis for rate limiting (optional, falls back to in-memory)
       - name: SPRING_REDIS_HOST
         value: "redis-service.{{ .Values.global.environment }}"
@@ -147,13 +136,6 @@ services:
       periodSeconds: 10
       timeoutSeconds: 5
       failureThreshold: 3
-    # Observability annotations
-    annotations:
-      prometheus.io/scrape: "true"
-      prometheus.io/path: "/actuator/prometheus"
-      prometheus.io/port: "8080"
-      # Jaeger tracing
-      jaeger.io/inject: "true"
     networkPolicy:
       enabled: true
       ingress:
@@ -161,9 +143,6 @@ services:
             - namespaceSelector:
                 matchLabels:
                   name: "{{ .Values.global.environment }}"
-            - namespaceSelector:
-                matchLabels:
-                  name: "observability-{{ .Values.global.environment }}"
       egress:
         - to: []    # Allow all egress (can be restricted later)
           ports:
@@ -182,8 +161,6 @@ services:
             - port: 8085  # Identity service
               protocol: TCP
             - port: 6379  # Redis
-              protocol: TCP
-            - port: 14268 # Jaeger
               protocol: TCP
 
   identity:
@@ -214,10 +191,6 @@ services:
       path: /actuator/health/readiness
       initialDelaySeconds: 20
       periodSeconds: 10
-    annotations:
-      prometheus.io/scrape: "true"
-      prometheus.io/path: "/actuator/prometheus"
-      prometheus.io/port: "8085"
 
   product:
     enabled: true
@@ -247,10 +220,6 @@ services:
       path: /actuator/health/readiness
       initialDelaySeconds: 10
       periodSeconds: 10
-    annotations:
-      prometheus.io/scrape: "true"
-      prometheus.io/path: "/actuator/prometheus"
-      prometheus.io/port: "8081"
 
   cart:
     enabled: true
@@ -280,10 +249,6 @@ services:
       path: /actuator/health/readiness
       initialDelaySeconds: 10
       periodSeconds: 10
-    annotations:
-      prometheus.io/scrape: "true"
-      prometheus.io/path: "/actuator/prometheus"
-      prometheus.io/port: "8083"
 
   order:
     enabled: true
@@ -313,10 +278,6 @@ services:
       path: /actuator/health/readiness
       initialDelaySeconds: 10
       periodSeconds: 10
-    annotations:
-      prometheus.io/scrape: "true"
-      prometheus.io/path: "/actuator/prometheus"
-      prometheus.io/port: "8082"
 
   payment:
     enabled: true
@@ -346,7 +307,32 @@ services:
       path: /actuator/health/readiness
       initialDelaySeconds: 10
       periodSeconds: 10
-    annotations:
-      prometheus.io/scrape: "true"
-      prometheus.io/path: "/actuator/prometheus"
-      prometheus.io/port: "8084"
+
+
+# Grafana Cloud integration (optional)
+grafanaCloud:
+  enabled: false
+  # Region short code used by Grafana Cloud OTLP gateway and Loki endpoints (e.g., us, eu, ap)
+  region: "us"
+  # Your Grafana Cloud stack (org) ID; stored in a Secret for runtime use
+  stackId: ""
+  # Secret configuration for API key and stack ID
+  secret:
+    create: false    # Set to true to let this chart create the secret from values below
+    name: grafana-cloud-credentials
+    apiKey: ""      # Only used if create=true; otherwise, create the secret yourself
+  # Prometheus-compatible scrape annotations helper
+  metrics:
+    scrape:
+      addAnnotations: true
+      path: "/actuator/prometheus"
+  # OTLP endpoint for traces/metrics/logs (HTTP/protobuf). Typically: https://otlp-gateway-<region>.grafana.net
+  otel:
+    endpoint: "https://otlp-gateway-{{ .Values.grafanaCloud.region }}.grafana.net"
+  # Loki HTTP push endpoint template (used by promtail)
+  loki:
+    pushUrl: "https://logs-prod-{{ .Values.grafanaCloud.region }}.grafana.net/loki/api/v1/push"
+  # Lightweight logs shipping via Promtail DaemonSet
+  promtail:
+    enabled: false
+    extraScrapeRelabelConfigs: []

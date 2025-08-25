@@ -104,36 +104,9 @@
             </encoder>
         </appender>
 
-        <!-- Logstash TCP Appender for Production -->
-        <appender name="LOGSTASH" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
-            <destination>${LOGSTASH_HOST:-logstash-service.observability.svc.cluster.local}:${LOGSTASH_PORT:-5000}</destination>
-            <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
-                <providers>
-                    <timestamp/>
-                    <logLevel/>
-                    <loggerName/>
-                    <message/>
-                    <mdc/>
-                    <arguments/>
-                    <stackTrace/>
-                    <pattern>
-                        <pattern>
-                            {
-                                "service": "api-gateway",
-                                "environment": "${ENV:-production}",
-                                "traceId": "%X{traceId:-}",
-                                "spanId": "%X{spanId:-}"
-                            }
-                        </pattern>
-                    </pattern>
-                </providers>
-            </encoder>
-        </appender>
-
         <root level="WARN">
             <appender-ref ref="CONSOLE"/>
             <appender-ref ref="FILE"/>
-            <appender-ref ref="LOGSTASH"/>
         </root>
 
         <logger name="com.sparkage" level="INFO"/>

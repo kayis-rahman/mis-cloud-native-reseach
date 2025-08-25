@@ -1,5 +1,7 @@
 {{- range $name, $svc := .Values.services }}
 {{- if and $svc.enabled $svc.networkPolicy $svc.networkPolicy.enabled }}
+# NOTE: Do not use template expressions (e.g., {{`{{ .Values.global.environment }}`}}) in label values in your values.yaml.
+# Kubernetes label values must be plain strings and valid per the label regex.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -15,29 +17,26 @@ spec:
   policyTypes:
     - Ingress
     - Egress
-  {{- if $svc.networkPolicy.ingress }}
   ingress:
-  {{- if eq (len $svc.networkPolicy.ingress) 0 }}
-    - {}
-  {{- else }}
-    {{- toYaml $svc.networkPolicy.ingress | nindent 4 }}
-  {{- end }}
-  {{- else }}
-  ingress:
-    - {}
-  {{- end }}
-  {{- if $svc.networkPolicy.egress }}
+    {{- if $svc.networkPolicy.ingress }}
+      {{- if eq (len $svc.networkPolicy.ingress) 0 }}
+      - {}
+      {{- else }}
+{{ tpl (toYaml $svc.networkPolicy.ingress) $ | nindent 6 }}
+      {{- end }}
+    {{- else }}
+      - {}
+    {{- end }}
   egress:
-  {{- if eq (len $svc.networkPolicy.egress) 0 }}
-    - {}
-  {{- else }}
-    {{- toYaml $svc.networkPolicy.egress | nindent 4 }}
-  {{- end }}
-  {{- else }}
-  egress:
-    - {}
-  {{- end }}
+    {{- if $svc.networkPolicy.egress }}
+      {{- if eq (len $svc.networkPolicy.egress) 0 }}
+      - {}
+      {{- else }}
+{{ tpl (toYaml $svc.networkPolicy.egress) $ | nindent 6 }}
+      {{- end }}
+    {{- else }}
+      - {}
+    {{- end }}
 ---
 {{- end }}
 {{- end }}
-

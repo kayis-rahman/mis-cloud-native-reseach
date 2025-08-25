@@ -31,6 +31,48 @@ services:
         value: "DEBUG"
       - name: LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_CLOUD_GATEWAY
         value: "DEBUG"
+      # Micrometer/Prometheus exposure
+      - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
+        value: "health,info,prometheus"
+      - name: MANAGEMENT_ENDPOINT_PROMETHEUS_ENABLED
+        value: "true"
+      - name: MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED
+        value: "true"
+      # Downward API for namespace (used in OTEL resource attributes)
+      - name: POD_NAMESPACE
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.namespace
+      # Grafana Cloud credentials from secret
+      - name: GRAFANA_CLOUD_STACK_ID
+        valueFrom:
+          secretKeyRef:
+            name: grafana-cloud-credentials
+            key: stack_id
+      - name: GRAFANA_CLOUD_API_KEY
+        valueFrom:
+          secretKeyRef:
+            name: grafana-cloud-credentials
+            key: api_key
+      # OpenTelemetry tracing to Grafana Tempo (via Cloud OTLP gateway)
+      - name: OTEL_SERVICE_NAME
+        value: "api-gateway"
+      - name: OTEL_RESOURCE_ATTRIBUTES
+        value: "service.name=api-gateway,service.namespace=$(POD_NAMESPACE),deployment.environment=development"
+      - name: OTEL_TRACES_EXPORTER
+        value: "otlp"
+      - name: OTEL_EXPORTER_OTLP_PROTOCOL
+        value: "http/protobuf"
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: "https://otlp-gateway-us.grafana.net"
+      - name: OTEL_EXPORTER_OTLP_HEADERS
+        value: "Authorization=Bearer $(GRAFANA_CLOUD_API_KEY),X-Scope-OrgID=$(GRAFANA_CLOUD_STACK_ID)"
+      - name: OTEL_PROPAGATORS
+        value: "tracecontext,baggage"
+    annotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/path: "/actuator/prometheus"
+      prometheus.io/port: "8080"
 
   # Enable only essential services for development
   identity:
@@ -64,26 +106,3 @@ services:
   payment:
     enabled: false  # Disable for development
 
-# Development-specific observability
-observability:
-  enabled: true
-  prometheus:
-    enabled: true
-    resources:
-      requests:
-        memory: "128Mi"
-        cpu: "50m"
-  grafana:
-    enabled: true
-    resources:
-      requests:
-        memory: "128Mi"
-        cpu: "50m"
-  elk:
-    enabled: false  # Disable ELK in development to save resources
-  jaeger:
-    enabled: true
-    resources:
-      requests:
-        memory: "128Mi"
-        cpu: "50m"

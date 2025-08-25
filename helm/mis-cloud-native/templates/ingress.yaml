@@ -6,16 +6,17 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: {{ printf "%s-%s" $.Release.Name $key | trunc 63 | trimSuffix "-" }}
+  {{- if $global.ingress.className }}
   annotations:
-    {{- if $global.ingress.className }}
     kubernetes.io/ingress.class: {{ $global.ingress.className | quote }}
-    {{- end }}
+  {{- end }}
 spec:
   {{- if $global.ingress.className }}
   ingressClassName: {{ $global.ingress.className | quote }}
   {{- end }}
+  {{- if $global.ingress.hosts | and (gt (len $global.ingress.hosts) 0) }}
   rules:
-    {{- range $host := ($global.ingress.hosts | default (list)) }}
+    {{- range $host := $global.ingress.hosts }}
     - host: {{ $host | quote }}
       http:
         paths:
@@ -27,6 +28,13 @@ spec:
                 port:
                   number: {{ $svc.service.port | default 80 }}
     {{- end }}
+  {{- else }}
+  defaultBackend:
+    service:
+      name: {{ printf "%s-%s" $.Release.Name $key | trunc 63 | trimSuffix "-" }}
+      port:
+        number: {{ $svc.service.port | default 80 }}
+  {{- end }}
   {{- if $global.ingress.tls }}
   tls:
     {{- toYaml $global.ingress.tls | nindent 4 }}

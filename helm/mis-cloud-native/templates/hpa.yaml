@@ -15,12 +15,34 @@ spec:
   minReplicas: {{ $svc.autoscaling.minReplicas | default 1 }}
   maxReplicas: {{ $svc.autoscaling.maxReplicas | default 3 }}
   metrics:
+    {{- $cpu := $svc.autoscaling.targetCPUUtilizationPercentage }}
+    {{- $mem := $svc.autoscaling.targetMemoryUtilizationPercentage }}
+    {{- if or $cpu $mem }}
+    {{- if $cpu }}
     - type: Resource
       resource:
         name: cpu
         target:
           type: Utilization
-          averageUtilization: {{ $svc.autoscaling.targetCPUUtilizationPercentage | default 80 }}
+          averageUtilization: {{ $cpu }}
+    {{- end }}
+    {{- if $mem }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ $mem }}
+    {{- end }}
+    {{- else }}
+    # Default to CPU metric if none specified
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 80
+    {{- end }}
 ---
 {{- end }}
 {{- end }}
