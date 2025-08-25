@@ -171,3 +171,63 @@ resource "google_container_node_pool" "primary" {
 
   depends_on = [google_container_cluster.gke]
 }
+
+############################
+# Firewall Rules
+############################
+# Allow internal traffic within the VPC
+resource "google_compute_firewall" "allow_internal" {
+  name    = "${var.project_name}-allow-internal"
+  network = google_compute_network.vpc.name
+
+  allow {
+    protocol = "icmp"
+  }
+
+  allow {
+    protocol = "tcp"
+    ports    = ["0-65535"]
+  }
+
+  allow {
+    protocol = "udp"
+    ports    = ["0-65535"]
+  }
+
+  source_ranges = [var.network_cidr]
+  target_tags   = ["internal"]
+
+  depends_on = [google_compute_network.vpc]
+}
+
+# Allow SSH access (optional, for debugging)
+resource "google_compute_firewall" "allow_ssh" {
+  name    = "${var.project_name}-allow-ssh"
+  network = google_compute_network.vpc.name
+
+  allow {
+    protocol = "tcp"
+    ports    = ["22"]
+  }
+
+  source_ranges = ["0.0.0.0/0"]
+  target_tags   = ["ssh-access"]
+
+  depends_on = [google_compute_network.vpc]
+}
+
+# Allow HTTP/HTTPS traffic for ingress
+resource "google_compute_firewall" "allow_http_https" {
+  name    = "${var.project_name}-allow-http-https"
+  network = google_compute_network.vpc.name
+
+  allow {
+    protocol = "tcp"
+    ports    = ["80", "443"]
+  }
+
+  source_ranges = ["0.0.0.0/0"]
+  target_tags   = ["http-server", "https-server"]
+
+  depends_on = [google_compute_network.vpc]
+}
