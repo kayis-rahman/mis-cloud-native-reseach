@@ -19,6 +19,11 @@ on:
         description: 'Services to deploy (space-separated, or "all")'
         required: false
         default: 'api-gateway'
+      deploy_observability:
+        description: 'Deploy observability stack only'
+        required: false
+        default: false
+        type: boolean
 
 env:
   REGISTRY: ghcr.io
@@ -59,7 +64,7 @@ jobs:
   build-images:
     name: Build & Push API Gateway Image
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && (github.event.inputs.deploy_observability != 'true' || github.event.inputs.deploy_observability == '')
     outputs:
       image-tag: ${{ steps.meta.outputs.tags }}
     steps:
@@ -120,12 +125,180 @@ jobs:
         docker push "$IMAGE"
         echo "✅ Successfully pushed $IMAGE"
 
-  # Job 3: Deploy Observability Stack (Development)
+  # Job 3: Deploy Observability Stack (Manual)
+  deploy-observability:
+    name: Deploy Observability Stack (Manual)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && (github.event.inputs.deploy_observability == 'true' || github.event.inputs.deploy_environment != '')
+    environment: ${{ github.event.inputs.deploy_environment || 'development' }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+    - name: Validate Google Cloud Authentication
+      run: |
+        echo "🔐 Validating Google Cloud Authentication for ${{ github.event.inputs.deploy_environment || 'development' }} observability..."
+        
+        if [ -n "$GOOGLE_APPLICATION_CREDENTIALS" ] && [ -f "$GOOGLE_APPLICATION_CREDENTIALS" ]; then
+          echo "✅ Found credentials file: $GOOGLE_APPLICATION_CREDENTIALS"
+          gcloud auth activate-service-account --key-file="$GOOGLE_APPLICATION_CREDENTIALS"
+          gcloud config set project "${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}"
+        else
+          echo "❌ No credentials file found from auth action"
+          exit 1
+        fi
+
+    - name: Set up Google Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+      with:
+        project_id: ${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}
+
+    - name: Install gke-gcloud-auth-plugin
+      run: |
+        echo "📦 Installing gke-gcloud-auth-plugin..."
+        gcloud components install gke-gcloud-auth-plugin --quiet
+        echo "✅ gke-gcloud-auth-plugin installed successfully"
+
+    - name: Configure kubectl
+      run: |
+        echo "🔧 Configuring kubectl for GKE cluster..."
+        
+        CLUSTER_NAME="${{ secrets.GKE_CLUSTER_NAME || 'mis-cloud-native-gke' }}"
+        CLUSTER_LOCATION="${{ secrets.GCP_REGION || 'us-central1' }}"
+        PROJECT_ID="${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}"
+        
+        echo "  Cluster: $CLUSTER_NAME"
+        echo "  Location: $CLUSTER_LOCATION"
+        echo "  Project: $PROJECT_ID"
+        
+        gcloud container clusters get-credentials "$CLUSTER_NAME" \
+          --region "$CLUSTER_LOCATION" \
+          --project "$PROJECT_ID"
+
+    - name: Setup Helm
+      uses: azure/setup-helm@v3
+      with:
+        version: '3.12.0'
+
+    - name: Set environment variables
+      id: set-env
+      run: |
+        ENV="${{ github.event.inputs.deploy_environment || 'development' }}"
+        echo "environment=$ENV" >> $GITHUB_OUTPUT
+        echo "observability_namespace=observability-${ENV}" >> $GITHUB_OUTPUT
+        echo "🎯 Target environment: $ENV"
+        echo "🎯 Observability namespace: observability-${ENV}"
+
+    - name: Create observability namespace
+      run: |
+        kubectl create namespace ${{ steps.set-env.outputs.observability_namespace }} --dry-run=client -o yaml | kubectl apply -f -
+
+    - name: Clean up existing observability deployment (if needed)
+      run: |
+        # Check if observability-stack exists and remove if in wrong namespace
+        if helm list -n ${{ steps.set-env.outputs.observability_namespace }} | grep -q "observability-stack"; then
+          echo "Found existing observability-stack in ${{ steps.set-env.outputs.observability_namespace }} namespace"
+        elif helm list --all-namespaces | grep -q "observability-stack"; then
+          echo "Found observability-stack in different namespace, cleaning up..."
+          # Find and delete the release
+          EXISTING_NS=$(helm list --all-namespaces -o json | jq -r '.[] | select(.name=="observability-stack") | .namespace' 2>/dev/null || echo "")
+          if [ "$EXISTING_NS" != "${{ steps.set-env.outputs.observability_namespace }}" ] && [ "$EXISTING_NS" != "" ]; then
+            echo "Removing observability-stack from namespace: $EXISTING_NS"
+            helm uninstall observability-stack -n "$EXISTING_NS" || true
+            kubectl delete namespace "$EXISTING_NS" --ignore-not-found=true || true
+          fi
+        fi
+
+    - name: Deploy Observability Stack (with fallback)
+      run: |
+        echo "🚀 Deploying observability stack to ${{ steps.set-env.outputs.environment }} environment..."
+        
+        # Try Helm deployment first
+        if helm upgrade --install observability-stack ./helm/observability-stack \
+          --namespace ${{ steps.set-env.outputs.observability_namespace }} \
+          --create-namespace \
+          --set global.environment=${{ steps.set-env.outputs.environment }} \
+          --set prometheus.enabled=true \
+          --set grafana.enabled=true \
+          --set jaeger.enabled=true \
+          --set elk.enabled=true \
+          --timeout=5m \
+          --wait; then
+          echo "✅ Helm deployment successful"
+        else
+          echo "⚠️ Helm deployment failed, falling back to direct YAML deployment..."
+          
+          # Fallback to direct YAML deployment
+          echo "Deploying Prometheus..."
+          kubectl apply -f observability/prometheus.yaml -n ${{ steps.set-env.outputs.observability_namespace }} || true
+          
+          echo "Deploying Grafana..."
+          kubectl apply -f observability/grafana.yaml -n ${{ steps.set-env.outputs.observability_namespace }} || true
+          
+          echo "Deploying Jaeger..."
+          kubectl apply -f observability/jaeger.yaml -n ${{ steps.set-env.outputs.observability_namespace }} || true
+          
+          echo "Deploying ELK Stack..."
+          kubectl apply -f observability/elk-stack.yaml -n ${{ steps.set-env.outputs.observability_namespace }} || true
+          
+          echo "✅ Fallback YAML deployment completed"
+        fi
+
+    - name: Wait for observability components to be ready
+      run: |
+        echo "⏳ Waiting for observability components to be ready..."
+        
+        # Wait for deployments with timeout
+        echo "Waiting for Prometheus..."
+        kubectl wait --for=condition=available --timeout=300s deployment -l app=prometheus -n ${{ steps.set-env.outputs.observability_namespace }} || true
+        
+        echo "Waiting for Grafana..."
+        kubectl wait --for=condition=available --timeout=300s deployment -l app=grafana -n ${{ steps.set-env.outputs.observability_namespace }} || true
+        
+        echo "Waiting for Jaeger..."
+        kubectl wait --for=condition=available --timeout=300s deployment -l app=jaeger -n ${{ steps.set-env.outputs.observability_namespace }} || true
+        
+        echo "✅ Observability components deployment completed (with timeout protection)"
+
+    - name: Verify observability deployment
+      run: |
+        echo "🔍 Checking observability components in ${{ steps.set-env.outputs.environment }}..."
+        echo "Namespace: ${{ steps.set-env.outputs.observability_namespace }}"
+        
+        echo "📊 Pods status:"
+        kubectl get pods -n ${{ steps.set-env.outputs.observability_namespace }} || echo "No pods found yet"
+        
+        echo "🌐 Services status:"
+        kubectl get services -n ${{ steps.set-env.outputs.observability_namespace }} || echo "No services found yet"
+        
+        echo "📦 Helm release status:"
+        helm status observability-stack -n ${{ steps.set-env.outputs.observability_namespace }} 2>/dev/null || echo "No Helm release found (using YAML deployment)"
+
+    - name: Display observability endpoints
+      run: |
+        echo "🎉 Observability stack deployment completed!"
+        echo "Environment: ${{ steps.set-env.outputs.environment }}"
+        echo "Namespace: ${{ steps.set-env.outputs.observability_namespace }}"
+        echo ""
+        echo "To access observability services:"
+        echo "1. Prometheus: kubectl port-forward -n ${{ steps.set-env.outputs.observability_namespace }} svc/prometheus-server 9090:80"
+        echo "2. Grafana: kubectl port-forward -n ${{ steps.set-env.outputs.observability_namespace }} svc/grafana 3000:80"
+        echo "3. Jaeger: kubectl port-forward -n ${{ steps.set-env.outputs.observability_namespace }} svc/jaeger-query 16686:16686"
+        echo ""
+        echo "Available services:"
+        kubectl get svc -n ${{ steps.set-env.outputs.observability_namespace }} || echo "No services available yet"
+
+  # Job 4: Deploy Observability Stack (Development) - Kept for backward compatibility
   deploy-observability-development:
     name: Deploy Observability Stack (Development)
     runs-on: ubuntu-latest
     needs: [build-images]
-    if: github.ref == 'refs/heads/develop' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_environment == 'development')
+    if: github.ref == 'refs/heads/develop' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_environment == 'development' && github.event.inputs.deploy_observability != 'true')
     environment: development
     steps:
     - name: Checkout code
@@ -220,12 +393,12 @@ jobs:
         kubectl get pods -n observability-dev || echo "No pods found yet"
         kubectl get services -n observability-dev || echo "No services found yet"
 
-  # Job 4: Deploy Observability Stack (Production)
+  # Job 5: Deploy Observability Stack (Production) - Kept for backward compatibility
   deploy-observability-production:
     name: Deploy Observability Stack (Production)
     runs-on: ubuntu-latest
     needs: [build-images]
-    if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_environment == 'production')
+    if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_environment == 'production' && github.event.inputs.deploy_observability != 'true')
     environment: production
     steps:
     - name: Checkout code
@@ -320,12 +493,12 @@ jobs:
         kubectl get pods -n observability-prod
         kubectl get services -n observability-prod
 
-  # Job 5: Deploy API Gateway (Development)
+  # Job 6: Deploy API Gateway (Development)
   deploy-development:
     name: Deploy API Gateway (Development)
     runs-on: ubuntu-latest
     needs: [build-images, deploy-observability-development]
-    if: github.ref == 'refs/heads/develop' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_environment == 'development')
+    if: github.ref == 'refs/heads/develop' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_environment == 'development' && github.event.inputs.deploy_observability != 'true')
     environment: development
     env:
       GHCR_OWNER: ${{ github.repository_owner }}
@@ -437,12 +610,12 @@ jobs:
         echo "Observability services:"
         kubectl get services -n observability-dev || echo "No observability services found"
 
-  # Job 6: Deploy API Gateway (Production)
+  # Job 7: Deploy API Gateway (Production)
   deploy-production:
     name: Deploy API Gateway (Production)
     runs-on: ubuntu-latest
     needs: [build-images, deploy-observability-production]
-    if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_environment == 'production')
+    if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_environment == 'production' && github.event.inputs.deploy_observability != 'true')
     environment: production
     env:
       GHCR_OWNER: ${{ github.repository_owner }}
