@@ -9,6 +9,16 @@ variable "gcp_project_id" {
   type        = string
 }
 
+variable "environment" {
+  description = "Deployment environment (development, staging, production)"
+  type        = string
+  default     = "development"
+  validation {
+    condition     = contains(["development", "staging", "production"], var.environment)
+    error_message = "Environment must be one of: development, staging, production."
+  }
+}
+
 variable "gcp_region" {
   description = "GCP region"
   type        = string
