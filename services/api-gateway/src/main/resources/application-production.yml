@@ -200,13 +200,9 @@ management:
       application: ${spring.application.name}
       environment: production
       version: ${APP_VERSION:unknown}
-
-# Tracing configuration
-spring.sleuth:
-  sampler:
-    probability: 0.1
+  tracing:
+    sampling:
+      probability: 0.1
   zipkin:
-    base-url: ${ZIPKIN_URL:http://jaeger-collector:14268}
-  jaeger:
-    remote-sender:
-      endpoint: ${JAEGER_ENDPOINT:http://jaeger-collector:14268/api/traces}
+    tracing:
+      endpoint: ${ZIPKIN_URL:http://jaeger-collector:9411/api/v2/spans}
