@@ -60,6 +60,14 @@ resource "google_container_cluster" "gke" {
   initial_node_count       = 1
   deletion_protection      = var.enable_deletion_protection
 
+  # Configure cluster to use the GitHub Actions service account
+  node_config {
+    service_account = "github-actions@${var.gcp_project_id}.iam.gserviceaccount.com"
+    oauth_scopes = [
+      "https://www.googleapis.com/auth/cloud-platform",
+    ]
+  }
+
   release_channel {
     channel = "REGULAR"
   }
