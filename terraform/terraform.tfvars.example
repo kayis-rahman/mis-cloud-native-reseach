@@ -1,1 +1,21 @@
 
+
+# Example terraform.tfvars for Grafana Cloud secrets
+# Copy to terraform.tfvars (do not commit real secrets)
+
+# Required
+gcp_project_id = "your-gcp-project-id"
+
+# Optional overrides
+gcp_region     = "us-central1"
+k8s_namespace  = "default"
+
+# Grafana Cloud credentials (populate with your values)
+# These will be stored as Secret Manager versions and synced into Kubernetes
+# as Secret grafana-cloud-credentials with keys stack_id and api_key.
+grafana_cloud_stack_id = "123456"         # your Grafana Cloud stack/org id
+grafana_cloud_api_key  = "glc_xxx..."     # your Grafana Cloud API key
+
+# Secret IDs in GSM (change if you prefer different names)
+# grafana_cloud_stack_id_secret_id = "grafana-cloud-stack-id"
+# grafana_cloud_api_key_secret_id  = "grafana-cloud-api-key"

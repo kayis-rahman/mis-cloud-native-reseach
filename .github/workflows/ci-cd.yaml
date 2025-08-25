@@ -378,9 +378,11 @@ jobs:
           echo "🔑 Activating service account..."
           gcloud auth activate-service-account --key-file="$GOOGLE_APPLICATION_CREDENTIALS"
           
-          # Set the project
-          echo "📋 Setting project to: ${{ secrets.GCP_PROJECT_ID }}"
-          gcloud config set project "${{ secrets.GCP_PROJECT_ID }}"
+          # Set the project with fallback default if secret not set
+          PROJECT_ID="${{ secrets.GCP_PROJECT_ID }}"
+          if [ -z "$PROJECT_ID" ]; then PROJECT_ID="mis-cloud-native-research"; fi
+          echo "📋 Setting project to: $PROJECT_ID"
+          gcloud config set project "$PROJECT_ID"
           
         else
           echo "❌ No credentials file found from auth action"
@@ -500,9 +502,11 @@ jobs:
           echo "🔑 Activating service account..."
           gcloud auth activate-service-account --key-file="$GOOGLE_APPLICATION_CREDENTIALS"
           
-          # Set the project
-          echo "📋 Setting project to: ${{ secrets.GCP_PROJECT_ID }}"
-          gcloud config set project "${{ secrets.GCP_PROJECT_ID }}"
+          # Set the project with fallback default if secret not set
+          PROJECT_ID="${{ secrets.GCP_PROJECT_ID }}"
+          if [ -z "$PROJECT_ID" ]; then PROJECT_ID="mis-cloud-native-research"; fi
+          echo "📋 Setting project to: $PROJECT_ID"
+          gcloud config set project "$PROJECT_ID"
           
         else
           echo "❌ No credentials file found from auth action"

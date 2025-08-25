@@ -152,3 +152,31 @@ variable "ghcr_token" {
   sensitive   = true
   default     = ""
 }
+
+# Grafana Cloud: Secret Manager secret IDs
+variable "grafana_cloud_stack_id_secret_id" {
+  description = "GCP Secret Manager secret ID for Grafana Cloud stack id"
+  type        = string
+  default     = "grafana-cloud-stack-id"
+}
+
+variable "grafana_cloud_api_key_secret_id" {
+  description = "GCP Secret Manager secret ID for Grafana Cloud API key"
+  type        = string
+  default     = "grafana-cloud-api-key"
+}
+
+# Grafana Cloud: values (set via tfvars). When provided, a new secret version is created.
+variable "grafana_cloud_stack_id" {
+  description = "Grafana Cloud stack (org) ID (sensitive)"
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
+variable "grafana_cloud_api_key" {
+  description = "Grafana Cloud API key (sensitive)"
+  type        = string
+  sensitive   = true
+  default     = null
+}
