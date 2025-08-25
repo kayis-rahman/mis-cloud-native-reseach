@@ -3,13 +3,13 @@ package com.sparkage.gateway.config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.server.SecurityWebFilterChain;
-import org.springframework.security.web.server.authentication.ServerAuthenticationConverter;
-import org.springframework.security.web.server.authentication.ServerAuthenticationFailureHandler;
-import org.springframework.security.web.server.authentication.ServerAuthenticationSuccessHandler;
 import org.springframework.web.server.ServerWebExchange;
+import org.springframework.web.server.WebFilter;
+import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Mono;
 
 import java.util.Arrays;
@@ -37,16 +37,19 @@ public class SecurityConfig {
                 )
                 .httpBasic(httpBasic -> httpBasic.disable())
                 .formLogin(formLogin -> formLogin.disable())
-                .addFilterBefore(new ApiKeyAuthenticationFilter(getValidApiKeys(), headerName),
-                                org.springframework.security.web.server.authentication.AuthenticationWebFilter.class)
                 .build();
+    }
+
+    @Bean
+    public WebFilter apiKeyAuthenticationFilter() {
+        return new ApiKeyAuthenticationFilter(getValidApiKeys(), headerName);
     }
 
     private List<String> getValidApiKeys() {
         return Arrays.asList(apiKeys.split(","));
     }
 
-    private static class ApiKeyAuthenticationFilter implements org.springframework.web.server.WebFilter {
+    private static class ApiKeyAuthenticationFilter implements WebFilter {
         private final List<String> validApiKeys;
         private final String headerName;
 
@@ -56,7 +59,7 @@ public class SecurityConfig {
         }
 
         @Override
-        public Mono<Void> filter(ServerWebExchange exchange, org.springframework.web.server.WebFilterChain chain) {
+        public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
             String path = exchange.getRequest().getPath().value();
 
             // Skip authentication for health endpoints
@@ -72,7 +75,7 @@ public class SecurityConfig {
             String apiKey = exchange.getRequest().getHeaders().getFirst(headerName);
 
             if (apiKey == null || !validApiKeys.contains(apiKey)) {
-                exchange.getResponse().setStatusCode(org.springframework.http.HttpStatus.UNAUTHORIZED);
+                exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
                 return exchange.getResponse().setComplete();
             }
 

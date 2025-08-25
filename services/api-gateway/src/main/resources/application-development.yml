@@ -3,8 +3,6 @@ spring:
     name: api-gateway
   main:
     web-application-type: reactive
-  profiles:
-    active: development
   cloud:
     gateway:
       default-filters:
