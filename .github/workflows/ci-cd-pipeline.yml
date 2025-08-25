@@ -31,47 +31,47 @@ permissions:
   id-token: write
 
 jobs:
-  # Job 1: Determine Environment
-  determine-environment:
-    name: Determine Environment
-    runs-on: ubuntu-latest
-    outputs:
-      environment: ${{ steps.set-env.outputs.environment }}
-      gcp_project: ${{ steps.set-env.outputs.gcp_project }}
-      gke_cluster: ${{ steps.set-env.outputs.gke_cluster }}
-      gcp_region: ${{ steps.set-env.outputs.gcp_region }}
-      namespace: ${{ steps.set-env.outputs.namespace }}
-    steps:
-      - name: Set environment variables
-        id: set-env
-        run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            ENV="${{ github.event.inputs.deploy_environment }}"
-          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            ENV="production"
-          elif [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
-            ENV="development"
-          else
-            ENV="development"
-          fi
-          
-          echo "environment=$ENV" >> $GITHUB_OUTPUT
-          
-          # Set environment-specific GCP values (minimal setup)
-          case $ENV in
-            production)
-              echo "gcp_project=${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-prod' }}" >> $GITHUB_OUTPUT
-              echo "gke_cluster=mis-cloud-native-prod" >> $GITHUB_OUTPUT
-              echo "gcp_region=${{ secrets.GCP_REGION || 'us-central1' }}" >> $GITHUB_OUTPUT
-              echo "namespace=production" >> $GITHUB_OUTPUT
-              ;;
-            development)
-              echo "gcp_project=${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-dev' }}" >> $GITHUB_OUTPUT
-              echo "gke_cluster=mis-cloud-native-dev" >> $GITHUB_OUTPUT
-              echo "gcp_region=${{ secrets.GCP_REGION || 'us-central1' }}" >> $GITHUB_OUTPUT
-              echo "namespace=development" >> $GITHUB_OUTPUT
-              ;;
-          esac
+  # Job 1: Determine Environment (Commented out for testing - using manual configuration)
+  # determine-environment:
+  #   name: Determine Environment
+  #   runs-on: ubuntu-latest
+  #   outputs:
+  #     environment: ${{ steps.set-env.outputs.environment }}
+  #     gcp_project: ${{ steps.set-env.outputs.gcp_project }}
+  #     gke_cluster: ${{ steps.set-env.outputs.gke_cluster }}
+  #     gcp_region: ${{ steps.set-env.outputs.gcp_region }}
+  #     namespace: ${{ steps.set-env.outputs.namespace }}
+  #   steps:
+  #     - name: Set environment variables
+  #       id: set-env
+  #       run: |
+  #         if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+  #           ENV="${{ github.event.inputs.deploy_environment }}"
+  #         elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+  #           ENV="production"
+  #         elif [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
+  #           ENV="development"
+  #         else
+  #           ENV="development"
+  #         fi
+  #
+  #         echo "environment=$ENV" >> $GITHUB_OUTPUT
+  #
+  #         # Set environment-specific GCP values (minimal setup)
+  #         case $ENV in
+  #           production)
+  #             echo "gcp_project=${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-prod' }}" >> $GITHUB_OUTPUT
+  #             echo "gke_cluster=mis-cloud-native-prod" >> $GITHUB_OUTPUT
+  #             echo "gcp_region=${{ secrets.GCP_REGION || 'us-central1' }}" >> $GITHUB_OUTPUT
+  #             echo "namespace=production" >> $GITHUB_OUTPUT
+  #             ;;
+  #           development)
+  #             echo "gcp_project=${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-dev' }}" >> $GITHUB_OUTPUT
+  #             echo "gke_cluster=mis-cloud-native-dev" >> $GITHUB_OUTPUT
+  #             echo "gcp_region=${{ secrets.GCP_REGION || 'us-central1' }}" >> $GITHUB_OUTPUT
+  #             echo "namespace=development" >> $GITHUB_OUTPUT
+  #             ;;
+  #         esac
 
   # Job 2: Code Quality and Security (Commented out for testing)
   # code-quality:
@@ -104,13 +104,49 @@ jobs:
 
   # Job 3: Build and Push Container Images (API Gateway only)
   build-images:
-    name: Build & Push Images
+    name: Build & Push API Gateway Image
     runs-on: ubuntu-latest
-    needs: [determine-environment]
     if: github.event_name != 'pull_request'
+    outputs:
+      environment: ${{ steps.set-env.outputs.environment }}
+      gcp_project: ${{ steps.set-env.outputs.gcp_project }}
+      gke_cluster: ${{ steps.set-env.outputs.gke_cluster }}
+      gcp_region: ${{ steps.set-env.outputs.gcp_region }}
+      namespace: ${{ steps.set-env.outputs.namespace }}
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+
+    - name: Set environment variables
+      id: set-env
+      run: |
+        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          ENV="${{ github.event.inputs.deploy_environment }}"
+        elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+          ENV="production"
+        elif [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
+          ENV="development"
+        else
+          ENV="development"
+        fi
+        
+        echo "environment=$ENV" >> $GITHUB_OUTPUT
+        
+        # Set environment-specific GCP values - using secrets for manual IAM configuration
+        case $ENV in
+          production)
+            echo "gcp_project=${{ secrets.GCP_PROJECT_ID }}" >> $GITHUB_OUTPUT
+            echo "gke_cluster=${{ secrets.GKE_CLUSTER_NAME }}" >> $GITHUB_OUTPUT
+            echo "gcp_region=${{ secrets.GCP_REGION }}" >> $GITHUB_OUTPUT
+            echo "namespace=production" >> $GITHUB_OUTPUT
+            ;;
+          development)
+            echo "gcp_project=${{ secrets.GCP_PROJECT_ID }}" >> $GITHUB_OUTPUT
+            echo "gke_cluster=${{ secrets.GKE_CLUSTER_NAME }}" >> $GITHUB_OUTPUT
+            echo "gcp_region=${{ secrets.GCP_REGION }}" >> $GITHUB_OUTPUT
+            echo "namespace=development" >> $GITHUB_OUTPUT
+            ;;
+        esac
 
     - name: Set up JDK 17
       uses: actions/setup-java@v4
@@ -142,7 +178,7 @@ jobs:
       working-directory: ./services/api-gateway
       run: |
         IMAGE_TAG="${{ env.IMAGE_REPOSITORY }}/api-gateway:${{ github.sha }}"
-        IMAGE_TAG_ENV="${{ env.IMAGE_REPOSITORY }}/api-gateway:${{ needs.determine-environment.outputs.environment }}"
+        IMAGE_TAG_ENV="${{ env.IMAGE_REPOSITORY }}/api-gateway:${{ steps.set-env.outputs.environment }}"
         
         docker build -t $IMAGE_TAG -t $IMAGE_TAG_ENV .
         docker push $IMAGE_TAG
@@ -152,8 +188,8 @@ jobs:
   deploy-gcp:
     name: Deploy API Gateway with Observability
     runs-on: ubuntu-latest
-    needs: [determine-environment, build-images]
-    environment: ${{ needs.determine-environment.outputs.environment }}
+    needs: [build-images]
+    environment: ${{ needs.build-images.outputs.environment }}
     if: github.event_name != 'pull_request'
     steps:
     - name: Checkout code
@@ -169,9 +205,9 @@ jobs:
 
     - name: Configure kubectl
       run: |
-        gcloud container clusters get-credentials ${{ needs.determine-environment.outputs.gke_cluster }} \
-          --region ${{ needs.determine-environment.outputs.gcp_region }} \
-          --project ${{ needs.determine-environment.outputs.gcp_project }}
+        gcloud container clusters get-credentials ${{ needs.build-images.outputs.gke_cluster }} \
+          --region ${{ needs.build-images.outputs.gcp_region }} \
+          --project ${{ needs.build-images.outputs.gcp_project }}
 
     - name: Setup Helm
       uses: azure/setup-helm@v3
@@ -180,36 +216,43 @@ jobs:
 
     - name: Create namespace
       run: |
-        kubectl create namespace ${{ needs.determine-environment.outputs.namespace }} --dry-run=client -o yaml | kubectl apply -f -
+        kubectl create namespace ${{ needs.build-images.outputs.namespace }} --dry-run=client -o yaml | kubectl apply -f -
 
     - name: Deploy Observability Stack
       run: |
-        # Deploy observability stack first
+        # Deploy observability stack first with proper configuration
         helm upgrade --install observability-stack ./helm/observability-stack \
-          --namespace ${{ needs.determine-environment.outputs.namespace }} \
+          --namespace ${{ needs.build-images.outputs.namespace }} \
           --create-namespace \
-          --wait --timeout=10m
+          --set global.environment=${{ needs.build-images.outputs.environment }} \
+          --set prometheus.enabled=true \
+          --set grafana.enabled=true \
+          --set jaeger.enabled=true \
+          --set elk.enabled=true \
+          --wait --timeout=15m
 
     - name: Create API Gateway secrets
       run: |
-        # Create minimal secrets for API Gateway
+        # Create API Gateway secrets using manually configured IAM
         kubectl create secret generic api-gateway-secrets \
-          --from-literal=api-keys="minimal-${{ needs.determine-environment.outputs.environment }}-key" \
-          --namespace ${{ needs.determine-environment.outputs.namespace }} \
+          --from-literal=jwt-secret="${{ secrets.JWT_SECRET }}" \
+          --from-literal=database-url="${{ secrets.DATABASE_URL }}" \
+          --from-literal=redis-url="${{ secrets.REDIS_URL }}" \
+          --namespace ${{ needs.build-images.outputs.namespace }} \
           --dry-run=client -o yaml | kubectl apply -f -
 
     - name: Deploy API Gateway with observability
       run: |
         # Use environment-specific values file with observability enabled
-        VALUES_FILE="values-${{ needs.determine-environment.outputs.environment }}.yaml"
+        VALUES_FILE="values-${{ needs.build-images.outputs.environment }}.yaml"
         
         helm upgrade --install mis-cloud-native ./helm/mis-cloud-native \
-          --namespace ${{ needs.determine-environment.outputs.namespace }} \
+          --namespace ${{ needs.build-images.outputs.namespace }} \
           --values ./helm/mis-cloud-native/$VALUES_FILE \
-          --set global.environment=${{ needs.determine-environment.outputs.environment }} \
-          --set global.gcp.projectId=${{ needs.determine-environment.outputs.gcp_project }} \
-          --set global.gcp.region=${{ needs.determine-environment.outputs.gcp_region }} \
-          --set global.gcp.cluster.name=${{ needs.determine-environment.outputs.gke_cluster }} \
+          --set global.environment=${{ needs.build-images.outputs.environment }} \
+          --set global.gcp.projectId=${{ needs.build-images.outputs.gcp_project }} \
+          --set global.gcp.region=${{ needs.build-images.outputs.gcp_region }} \
+          --set global.gcp.cluster.name=${{ needs.build-images.outputs.gke_cluster }} \
           --set services.api-gateway.image="${{ env.IMAGE_REPOSITORY }}/api-gateway:${{ github.sha }}" \
           --set services.api-gateway.enabled=true \
           --set services.identity.enabled=false \
@@ -222,13 +265,31 @@ jobs:
           --set observability.grafana.enabled=true \
           --set observability.jaeger.enabled=true \
           --set observability.elk.enabled=true \
-          --wait --timeout=10m
+          --set observability.jaeger.collector.service.zipkin.port=9411 \
+          --set observability.prometheus.server.service.type=ClusterIP \
+          --set observability.grafana.service.type=ClusterIP \
+          --wait --timeout=15m
+
+    - name: Verify deployment
+      run: |
+        # Wait for API Gateway deployment
+        kubectl wait --for=condition=available --timeout=300s deployment/mis-cloud-native-api-gateway -n ${{ needs.build-images.outputs.namespace }}
+        
+        # Check observability components
+        kubectl get pods -n ${{ needs.build-images.outputs.namespace }} -l app.kubernetes.io/component=observability
+        
+        # Display service endpoints
+        echo "🎉 Deployment completed successfully!"
+        echo "API Gateway service:"
+        kubectl get service mis-cloud-native-api-gateway -n ${{ needs.build-images.outputs.namespace }}
+        echo "Observability services:"
+        kubectl get services -n ${{ needs.build-images.outputs.namespace }} -l app.kubernetes.io/component=observability
 
   # Job 5: Smoke Tests (Commented out for testing)
   # smoke-tests:
   #   name: Run Smoke Tests
   #   runs-on: ubuntu-latest
-  #   needs: [determine-environment, deploy-gcp]
+  #   needs: [build-images, deploy-gcp]
   #   if: github.event_name != 'pull_request'
   #   steps:
   #   - name: Checkout code
@@ -244,18 +305,18 @@ jobs:
 
   #   - name: Configure kubectl
   #     run: |
-  #       gcloud container clusters get-credentials ${{ needs.determine-environment.outputs.gke_cluster }} \
-  #         --region ${{ needs.determine-environment.outputs.gcp_region }} \
-  #         --project ${{ needs.determine-environment.outputs.gcp_project }}
+  #       gcloud container clusters get-credentials ${{ needs.build-images.outputs.gke_cluster }} \
+  #         --region ${{ needs.build-images.outputs.gcp_region }} \
+  #         --project ${{ needs.build-images.outputs.gcp_project }}
 
   #   - name: Wait for deployments
   #     run: |
-  #       kubectl wait --for=condition=available --timeout=300s deployment --all -n ${{ needs.determine-environment.outputs.namespace }}
+  #       kubectl wait --for=condition=available --timeout=300s deployment --all -n ${{ needs.build-images.outputs.namespace }}
 
   #   - name: Run basic health checks
   #     run: |
   #       # Port forward to test API Gateway
-  #       kubectl port-forward service/mis-cloud-native-api-gateway 8080:8080 -n ${{ needs.determine-environment.outputs.namespace }} &
+  #       kubectl port-forward service/mis-cloud-native-api-gateway 8080:8080 -n ${{ needs.build-images.outputs.namespace }} &
   #       sleep 10
 
   #       # Test health endpoint
@@ -263,26 +324,26 @@ jobs:
   #       echo "✅ API Gateway health check passed"
 
   #       # Test with the environment profile
-  #       echo "✅ Deployment to ${{ needs.determine-environment.outputs.environment }} completed successfully!"
+  #       echo "✅ Deployment to ${{ needs.build-images.outputs.environment }} completed successfully!"
 
   # Job 6: Notification (Commented out for testing)
   # notify:
   #   name: Notify Deployment Status
   #   runs-on: ubuntu-latest
-  #   needs: [determine-environment, smoke-tests]
+  #   needs: [build-images, deploy-gcp]
   #   if: always() && github.event_name != 'pull_request'
   #   steps:
   #     - name: Notify Success
-  #       if: needs.smoke-tests.result == 'success'
+  #       if: needs.deploy-gcp.result == 'success'
   #       run: |
-  #         echo "🎉 Deployment to ${{ needs.determine-environment.outputs.environment }} completed successfully!"
-  #         echo "Environment: ${{ needs.determine-environment.outputs.environment }}"
-  #         echo "GCP Project: ${{ needs.determine-environment.outputs.gcp_project }}"
-  #         echo "Cluster: ${{ needs.determine-environment.outputs.gke_cluster }}"
-  #         echo "Namespace: ${{ needs.determine-environment.outputs.namespace }}"
+  #         echo "🎉 Deployment to ${{ needs.build-images.outputs.environment }} completed successfully!"
+  #         echo "Environment: ${{ needs.build-images.outputs.environment }}"
+  #         echo "GCP Project: ${{ needs.build-images.outputs.gcp_project }}"
+  #         echo "Cluster: ${{ needs.build-images.outputs.gke_cluster }}"
+  #         echo "Namespace: ${{ needs.build-images.outputs.namespace }}"
 
   #     - name: Notify Failure
-  #       if: needs.smoke-tests.result == 'failure' || needs.deploy-gcp.result == 'failure'
+  #       if: needs.deploy-gcp.result == 'failure'
   #       run: |
-  #         echo "❌ Deployment to ${{ needs.determine-environment.outputs.environment }} failed!"
+  #         echo "❌ Deployment to ${{ needs.build-images.outputs.environment }} failed!"
   #         exit 1
