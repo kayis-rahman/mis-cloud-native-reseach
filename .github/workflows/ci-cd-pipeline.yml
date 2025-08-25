@@ -41,9 +41,9 @@ jobs:
   test-and-build:
     name: Test & Build
     runs-on: ubuntu-latest
-    if: ${{ !inputs.skip_build }}
+    if: ${{ github.event_name != 'workflow_dispatch' || !inputs.skip_build }}
     outputs:
-      image-tag: ${{ steps.meta.outputs.tags }}
+      image-tag: ${{ steps.set-image.outputs.image-tag }}
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -130,6 +130,15 @@ jobs:
         cache-from: type=gha
         cache-to: type=gha,mode=max
         platforms: linux/amd64
+
+    - name: Set single image tag
+      if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+      id: set-image
+      run: |
+        # Extract the first tag from the multi-line output
+        IMAGE_TAG=$(echo "${{ steps.meta.outputs.tags }}" | head -n1)
+        echo "image-tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+        echo "Selected image tag: $IMAGE_TAG"
 
   # Job 2: Deploy
   deploy:
