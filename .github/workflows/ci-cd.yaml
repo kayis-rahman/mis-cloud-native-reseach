@@ -158,21 +158,6 @@ jobs:
 #      with:
 #        version: 'v1.28.0'
 #
-#    - name: Install gke-gcloud-auth-plugin
-#      run: |
-#        echo "📦 Installing gke-gcloud-auth-plugin..."
-#        gcloud components install gke-gcloud-auth-plugin --quiet
-#        echo "✅ gke-gcloud-auth-plugin installed successfully"
-#
-#    - name: Bootstrap Terraform state (if needed)
-#      run: |
-#        chmod +x scripts/bootstrap_state.sh
-#        ./scripts/bootstrap_state.sh || echo "State already exists or bootstrap not needed"
-#      env:
-#        TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT }}
-#        TF_VAR_gcp_region: ${{ secrets.GCP_REGION || 'us-central1' }}
-#        TF_VAR_gcp_zone: ${{ secrets.GCP_ZONE || 'us-central1-a' }}
-#        TF_VAR_project_name: "mis-cloud-native"
 #
 #    - name: Create base infrastructure
 #      run: |
@@ -393,21 +378,16 @@ jobs:
       uses: google-github-actions/setup-gcloud@v2
       with:
         project_id: ${{ secrets.GCP_PROJECT_ID }}
-
-    - name: Install gke-gcloud-auth-plugin
-      run: |
-        echo "📦 Installing gke-gcloud-auth-plugin..."
-        gcloud components install gke-gcloud-auth-plugin --quiet
-        echo "✅ gke-gcloud-auth-plugin installed successfully"
+        install_components: 'gke-gcloud-auth-plugin'
 
     - name: Configure kubectl
       run: |
         echo "🔧 Configuring kubectl for GKE cluster..."
         
-        # Use infrastructure outputs if available, otherwise use defaults
-        CLUSTER_NAME="${{ needs.infrastructure.outputs.cluster-name }}"
-        CLUSTER_LOCATION="${{ needs.infrastructure.outputs.cluster-location}}"
-        PROJECT_ID="${{ needs.infrastructure.outputs.project-id || secrets.GCP_PROJECT_ID}}"
+        # Configure cluster parameters (static)
+        CLUSTER_NAME="mis-research-cloud-native-gke"
+        CLUSTER_LOCATION="us-central1"
+        PROJECT_ID="${{ secrets.GCP_PROJECT_ID }}"
         
         echo "  Cluster: $CLUSTER_NAME"
         echo "  Location: $CLUSTER_LOCATION"
@@ -490,48 +470,20 @@ jobs:
       with:
         credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-    - name: Validate Google Cloud Authentication
-      run: |
-        echo "🔐 Validating Google Cloud Authentication for production deployment..."
-        
-        # Check if credentials file was created by the auth action
-        if [ -n "$GOOGLE_APPLICATION_CREDENTIALS" ] && [ -f "$GOOGLE_APPLICATION_CREDENTIALS" ]; then
-          echo "✅ Found credentials file: $GOOGLE_APPLICATION_CREDENTIALS"
-          
-          # Activate the service account
-          echo "🔑 Activating service account..."
-          gcloud auth activate-service-account --key-file="$GOOGLE_APPLICATION_CREDENTIALS"
-          
-          # Set the project with fallback default if secret not set
-          PROJECT_ID="${{ secrets.GCP_PROJECT_ID }}"
-          if [ -z "$PROJECT_ID" ]; then PROJECT_ID="mis-cloud-native-research"; fi
-          echo "📋 Setting project to: $PROJECT_ID"
-          gcloud config set project "$PROJECT_ID"
-          
-        else
-          echo "❌ No credentials file found from auth action"
-          exit 1
-        fi
-
     - name: Set up Google Cloud SDK
       uses: google-github-actions/setup-gcloud@v2
       with:
         project_id: ${{ secrets.GCP_PROJECT_ID }}
-
-    - name: Install gke-gcloud-auth-plugin
-      run: |
-        echo "📦 Installing gke-gcloud-auth-plugin..."
-        gcloud components install gke-gcloud-auth-plugin --quiet
-        echo "✅ gke-gcloud-auth-plugin installed successfully"
+        install_components: 'gke-gcloud-auth-plugin'
 
     - name: Configure kubectl
       run: |
         echo "🔧 Configuring kubectl for GKE cluster..."
         
-        # Use infrastructure outputs if available, otherwise use defaults
-        CLUSTER_NAME="${{ needs.infrastructure.outputs.cluster-name }}"
-        CLUSTER_LOCATION="${{ needs.infrastructure.outputs.cluster-location }}"
-        PROJECT_ID="${{ needs.infrastructure.outputs.project-id || secrets.GCP_PROJECT_ID }}"
+        # Configure cluster parameters (static)
+        CLUSTER_NAME="mis-research-cloud-native-gke"
+        CLUSTER_LOCATION="us-central1"
+        PROJECT_ID="${{ secrets.GCP_PROJECT_ID }}"
         
         echo "  Cluster: $CLUSTER_NAME"
         echo "  Location: $CLUSTER_LOCATION"
