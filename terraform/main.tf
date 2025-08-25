@@ -60,6 +60,14 @@ resource "google_container_cluster" "gke" {
   initial_node_count       = 1
   deletion_protection      = var.enable_deletion_protection
 
+  # Configure initial nodes to use your GitHub Actions service account
+  node_config {
+    service_account = "github-actions@${var.gcp_project_id}.iam.gserviceaccount.com"
+    oauth_scopes = [
+      "https://www.googleapis.com/auth/cloud-platform",
+    ]
+  }
+
   release_channel {
     channel = "REGULAR"
   }
@@ -131,6 +139,9 @@ resource "google_container_node_pool" "primary" {
     machine_type = "e2-standard-2"  # 2 vCPU, 8Gi memory
     disk_size_gb = 30              # Increased for better performance
     disk_type    = "pd-ssd"        # SSD for performance
+
+    # Use your GitHub Actions service account consistently
+    service_account = "github-actions@${var.gcp_project_id}.iam.gserviceaccount.com"
 
     oauth_scopes = [
       "https://www.googleapis.com/auth/cloud-platform",
