@@ -54,6 +54,10 @@ grafana:
     port: 3000
     targetPort: 3000
 
+  admin:
+    user: "admin"
+    password: "admin123"  # Change this in production
+
   resources:
     requests:
       memory: "128Mi"  # Increased from 64Mi for better performance
