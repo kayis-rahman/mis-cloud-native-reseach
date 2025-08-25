@@ -11,7 +11,7 @@ data "google_secret_manager_secret_version" "ghcr_token" {
   count      = (var.ghcr_token == "" && var.ghcr_token_secret_id != "" && local.ghcr_enabled) ? 1 : 0
   secret     = var.ghcr_token_secret_id
   version    = "latest"
-  depends_on = [google_container_node_pool.primary]
+  depends_on = [google_container_node_pool.poc_pool]
 }
 
 # Build dockerconfigjson content (raw JSON string)
@@ -54,7 +54,7 @@ resource "kubernetes_secret" "ghcr_creds" {
     ]
   }
 
-  depends_on = [google_container_node_pool.primary]
+  depends_on = [google_container_node_pool.poc_pool]
 }
 
 # Patch default service account to include the imagePullSecret

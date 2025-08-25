@@ -116,8 +116,8 @@ resource "google_container_cluster" "gke" {
 }
 
 # Single cost-optimized node pool for all workloads
-resource "google_container_node_pool" "poc_pool" {
-  name       = "poc-pool"
+resource "google_container_node_pool" "primary" {
+  name       = "primary-pool"
   location   = var.gcp_zone  # Single zone for cost savings
   cluster    = google_container_cluster.gke.name
 
@@ -128,9 +128,9 @@ resource "google_container_node_pool" "poc_pool" {
   }
 
   node_config {
-    machine_type = "e2-standard-2"  # Upgraded from e2-small: 2 vCPU, 8Gi memory
-    disk_size_gb = 30              # Increased from 20Gi for better performance
-    disk_type    = "pd-ssd"        # Upgraded to SSD for performance
+    machine_type = "e2-standard-2"  # 2 vCPU, 8Gi memory
+    disk_size_gb = 30              # Increased for better performance
+    disk_type    = "pd-ssd"        # SSD for performance
 
     oauth_scopes = [
       "https://www.googleapis.com/auth/cloud-platform",
@@ -139,7 +139,7 @@ resource "google_container_node_pool" "poc_pool" {
     labels = {
       env        = var.environment
       node-type  = "performance-optimized"
-      pool       = "poc-pool"
+      pool       = "primary-pool"
     }
 
     metadata = {
@@ -151,156 +151,23 @@ resource "google_container_node_pool" "poc_pool" {
       mode = "GKE_METADATA"
     }
 
-    # Enable preemptible instances for cost savings while maintaining performance
-    preemptible = true
-
-    # Resource labels
-    resource_labels = {
-      "performance-optimized" = "true"
-      "environment"          = "poc"
-      "storage-type"         = "ssd"
+    taint {
+      key    = "dedicated"
+      value  = "poc"
+      effect = "NO_SCHEDULE"
     }
   }
 
-  # Node management settings
+  # Upgrade settings for better reliability
+  upgrade_settings {
+    max_surge       = 1
+    max_unavailable = 0
+  }
+
   management {
     auto_repair  = true
     auto_upgrade = true
   }
 
-  # Update strategy
-  upgrade_settings {
-    max_surge       = 1
-    max_unavailable = 0
-    strategy        = "SURGE"
-  }
-}
-
-############################
-# Cloud SQL (PostgreSQL) example dependency
-############################
-resource "random_password" "db" {
-  length  = 16
-  special = true
-}
-
-# Consolidate the DB password to a single local and store in Secret Manager
-locals {
-  db_password_effective = coalesce(var.db_password, random_password.db.result)
-}
-
-resource "google_secret_manager_secret" "db_password" {
-  secret_id = var.db_secret_id
-  replication {
-    auto {}
-  }
-  depends_on = [google_project_service.services]
-}
-
-resource "google_secret_manager_secret_version" "db_password" {
-  secret      = google_secret_manager_secret.db_password.id
-  secret_data = local.db_password_effective
-}
-
-# Instance
-resource "google_sql_database_instance" "postgres" {
-  name                 = "${var.project_name}-pg"
-  region               = var.gcp_region
-  database_version     = var.db_version
-  deletion_protection  = var.enable_deletion_protection
-
-  settings {
-    tier = var.db_tier
-    ip_configuration {
-      ipv4_enabled = true
-      authorized_networks {
-        name  = "public"
-        value = "0.0.0.0/0"
-      }
-    }
-  }
-
-  depends_on = [google_project_service.services]
-}
-
-# Database and user
-
-# Additional databases per service for clearer separation
-resource "google_sql_database" "db_identity" {
-  name     = "identitydb"
-  instance = google_sql_database_instance.postgres.name
-}
-
-resource "google_sql_database" "db_product" {
-  name     = "productdb"
-  instance = google_sql_database_instance.postgres.name
-}
-
-resource "google_sql_database" "db_cart" {
-  name     = "cartdb"
-  instance = google_sql_database_instance.postgres.name
-}
-
-resource "google_sql_database" "db_order" {
-  name     = "orderdb"
-  instance = google_sql_database_instance.postgres.name
-}
-
-resource "google_sql_database" "db_payment" {
-  name     = "paymentdb"
-  instance = google_sql_database_instance.postgres.name
-}
-
-resource "google_sql_user" "db" {
-  name     = var.db_username
-  instance = google_sql_database_instance.postgres.name
-  password = local.db_password_effective
-}
-
-############################
-# Helm bootstrapping (optional)
-############################
-locals {
-  services = [
-    "cart",
-    "identity",
-    "order",
-    "payment",
-    "product",
-  ]
-}
-
-# Single release per service using the shared chart; enable only the service being deployed.
-resource "helm_release" "service" {
-  for_each = var.create_initial_helm ? toset(local.services) : toset([])
-
-  name       = each.key
-  repository = null
-  chart      = "../helm/mis-cloud-native"
-  namespace  = "default"
-  create_namespace = false
-
-  # Only enable this service in the values map
-  set {
-    name  = "services.${each.key}.enabled"
-    value = "true"
-  }
-
-  # Set image to either global registry + service-image or provided full ref
-  dynamic "set" {
-    for_each = var.global_image_registry != "" ? [1] : []
-    content {
-      name  = "global.imageRegistry"
-      value = var.global_image_registry
-    }
-  }
-
-  set {
-    name  = "services.${each.key}.image"
-    value = lookup(var.service_images, each.key, "")
-  }
-
-  depends_on = [
-    google_container_node_pool.poc_pool,
-  ]
+  depends_on = [google_container_cluster.gke]
 }

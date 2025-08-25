@@ -40,7 +40,7 @@ resource "kubernetes_secret" "db_service" {
   }
 
   depends_on = [
-    google_container_node_pool.primary,
+    google_container_node_pool.poc_pool,
     google_sql_database_instance.postgres,
   ]
 }

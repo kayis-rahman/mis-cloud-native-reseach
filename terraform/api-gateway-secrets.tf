@@ -22,5 +22,5 @@ resource "kubernetes_secret" "api_gateway_security" {
   data = {
     apiKeys = jsondecode(google_secret_manager_secret_version.api_gateway_security.secret_data)["apiKeys"]
   }
-  depends_on = [google_container_node_pool.primary]
+  depends_on = [google_container_node_pool.poc_pool]
 }
