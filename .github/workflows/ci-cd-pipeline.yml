@@ -3,17 +3,20 @@ name: CI/CD Pipeline - Cloud Native Microservices
 on:
   push:
     branches: [ main, develop ]
+    # Remove overly restrictive paths filter to prevent workflow skipping
+    # paths:
+    #   - 'services/**'
+    #   - 'helm/**'
+    #   - 'terraform/**'
+    #   - '.github/workflows/**'
+  pull_request:
+    branches: [ main ]
+    # Keep paths filter for PRs to avoid unnecessary runs
     paths:
       - 'services/**'
       - 'helm/**'
       - 'terraform/**'
       - '.github/workflows/**'
-  pull_request:
-    branches: [ main ]
-    paths:
-      - 'services/**'
-      - 'helm/**'
-      - 'terraform/**'
   workflow_dispatch:
     inputs:
       deploy_environment:
