@@ -93,16 +93,16 @@ variable "service_images" {
   }
 }
 
-variable "db_secret_id" {
-  description = "Secret Manager secret ID to store the DB password"
-  type        = string
-  default     = "mis-cloud-native-db-password"
-}
-
 variable "enable_deletion_protection" {
   description = "Enable deletion protection for critical resources"
   type        = bool
   default     = false
+}
+
+variable "db_secret_id" {
+  description = "Secret Manager secret ID to store the DB password"
+  type        = string
+  default     = "mis-cloud-native-db-password"
 }
 
 variable "ghcr_owner" {

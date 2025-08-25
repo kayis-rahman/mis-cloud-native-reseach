@@ -18,7 +18,7 @@ data "google_container_cluster" "this" {
   location = var.gcp_region
   depends_on = [
     google_container_cluster.gke,
-    google_container_node_pool.poc_pool,
+    google_container_node_pool.primary,
   ]
 }
 

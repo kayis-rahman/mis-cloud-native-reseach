@@ -9,7 +9,7 @@ data "google_secret_manager_secret_version" "generic" {
   for_each = local.generic_secret_map
   secret   = each.value
   version  = "latest"
-  depends_on = [google_container_node_pool.poc_pool]
+  depends_on = [google_container_node_pool.primary]
 }
 
 resource "kubernetes_secret" "generic" {
@@ -24,5 +24,5 @@ resource "kubernetes_secret" "generic" {
     value = base64encode(data.google_secret_manager_secret_version.generic[each.key].secret_data)
   }
 
-  depends_on = [google_container_node_pool.poc_pool]
+  depends_on = [google_container_node_pool.primary]
 }
