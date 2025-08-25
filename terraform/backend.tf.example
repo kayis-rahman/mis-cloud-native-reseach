@@ -1,0 +1,9 @@
+# This file is used as a template by scripts/bootstrap_state.sh
+# The placeholder will be replaced with the actual bucket name
+
+terraform {
+  backend "gcs" {
+    bucket = "REPLACE_WITH_TF_STATE_BUCKET_NAME"
+    prefix = "mis-research-cloud-native/terraform/state"
+  }
+}
