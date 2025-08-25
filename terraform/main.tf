@@ -118,7 +118,7 @@ resource "google_container_cluster" "gke" {
 # Single cost-optimized node pool for all workloads
 resource "google_container_node_pool" "primary" {
   name       = "primary-pool"
-  location   = var.gcp_zone  # Single zone for cost savings
+  location   = var.gcp_region  # Use region to match cluster
   cluster    = google_container_cluster.gke.name
 
   # Conservative auto-scaling for budget
@@ -131,6 +131,9 @@ resource "google_container_node_pool" "primary" {
     machine_type = "e2-standard-2"  # 2 vCPU, 8Gi memory
     disk_size_gb = 30              # Increased for better performance
     disk_type    = "pd-ssd"        # SSD for performance
+
+    # Use the GitHub Actions service account instead of default Compute Engine SA
+    service_account = "github-actions@${var.gcp_project_id}.iam.gserviceaccount.com"
 
     oauth_scopes = [
       "https://www.googleapis.com/auth/cloud-platform",
