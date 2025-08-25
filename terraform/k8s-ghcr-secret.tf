@@ -45,8 +45,6 @@ resource "kubernetes_secret" "ghcr_creds" {
     namespace = var.k8s_namespace
     annotations = {
       "terraform.io/managed-by" = "terraform"
-      # Add the secret version as annotation to track changes
-      "terraform.io/secret-version" = try(data.google_secret_manager_secret_version.ghcr_token[0].version, "latest")
     }
   }
   type = "kubernetes.io/dockerconfigjson"
@@ -58,7 +56,7 @@ resource "kubernetes_secret" "ghcr_creds" {
     # Only recreate if the content actually changes
     create_before_destroy = true
     ignore_changes = [
-      # Ignore metadata changes that don't affect functionality
+      # Ignore all annotation changes to prevent inconsistency issues
       metadata[0].annotations
     ]
   }
