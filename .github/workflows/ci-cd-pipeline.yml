@@ -245,7 +245,7 @@ jobs:
     name: Deploy Observability
     runs-on: ubuntu-latest
     needs: [deploy-infrastructure]
-    if: ${{ always() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && !cancelled() }}
+    if: ${{ success() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && !cancelled() }}
     environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
     steps:
     - name: Checkout code
@@ -328,7 +328,7 @@ jobs:
     name: Deploy Backend Services
     runs-on: ubuntu-latest
     needs: [deploy-observability]
-    if: ${{ always() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && !cancelled() }}
+    if: ${{ success() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && !cancelled() }}
     environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
     steps:
     - name: Checkout code
@@ -407,7 +407,7 @@ jobs:
     name: Deploy API Gateway
     runs-on: ubuntu-latest
     needs: [deploy-backend-services]  # REMOVED test-and-build dependency
-    if: ${{ always() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && !cancelled() }}
+    if: ${{ success() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && !cancelled() }}
     environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
     steps:
     - name: Checkout code

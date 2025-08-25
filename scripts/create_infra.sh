@@ -22,6 +22,9 @@ terraform apply -auto-approve \
   -target=google_project_service.services \
   -target=google_compute_network.vpc \
   -target=google_compute_subnetwork.subnet \
+  -target=google_compute_firewall.allow_internal \
+  -target=google_compute_firewall.allow_ssh \
+  -target=google_compute_firewall.allow_http_https \
   -target=google_container_cluster.gke \
   -target=google_container_node_pool.primary
 
