@@ -161,15 +161,6 @@ jobs:
           echo "NAMESPACE=development" >> $GITHUB_ENV
         fi
 
-    - name: Install GKE auth plugin
-      if: env.GCP_SA_KEY != ''
-      run: |
-        # Install Google Cloud SDK repository and GKE auth plugin using modern GPG method
-        curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg
-        echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | sudo tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
-        sudo apt-get update
-        sudo apt-get install -y google-cloud-cli-gke-gcloud-auth-plugin
-
     - name: Authenticate to Google Cloud
       if: env.GCP_SA_KEY != ''
       uses: google-github-actions/auth@v2
@@ -181,7 +172,7 @@ jobs:
       uses: google-github-actions/setup-gcloud@v2
       with:
         project_id: ${{ env.GCP_PROJECT_ID }}
-        install_components: ''
+        install_components: 'gke-gcloud-auth-plugin'
 
     - name: Setup Terraform
       if: env.GCP_SA_KEY != ''
@@ -266,13 +257,15 @@ jobs:
       uses: google-github-actions/auth@v2
       with:
         credentials_json: ${{ secrets.GCP_SA_KEY }}
+        workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+        service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
 
     - name: Set up Google Cloud SDK
       if: env.GCP_SA_KEY != ''
       uses: google-github-actions/setup-gcloud@v2
       with:
         project_id: ${{ env.GCP_PROJECT_ID }}
-        install_components: ''
+        install_components: 'gke-gcloud-auth-plugin'
 
     - name: Configure kubectl for GCP
       if: env.GCP_SA_KEY != ''
@@ -355,7 +348,7 @@ jobs:
       uses: google-github-actions/setup-gcloud@v2
       with:
         project_id: ${{ env.GCP_PROJECT_ID }}
-        install_components: ''
+        install_components: 'gke-gcloud-auth-plugin'
 
     - name: Configure kubectl for GCP
       if: env.GCP_SA_KEY != ''
@@ -438,7 +431,7 @@ jobs:
       uses: google-github-actions/setup-gcloud@v2
       with:
         project_id: ${{ env.GCP_PROJECT_ID }}
-        install_components: ''
+        install_components: 'gke-gcloud-auth-plugin'
 
     - name: Configure kubectl for GCP
       if: env.GCP_SA_KEY != ''
