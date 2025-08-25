@@ -285,15 +285,20 @@ jobs:
       run: |
         echo "📊 Deploying cost-optimized observability stack..."
         
+        # Create namespace with proper Helm labels and annotations
         kubectl create namespace observability --dry-run=client -o yaml | kubectl apply -f -
         
-        # Label the observability namespace
-        kubectl label namespace observability name=observability --overwrite=true
+        # Add required Helm labels and annotations to the namespace
+        kubectl annotate namespace observability meta.helm.sh/release-name=observability-stack --overwrite
+        kubectl annotate namespace observability meta.helm.sh/release-namespace=observability --overwrite
+        kubectl label namespace observability app.kubernetes.io/managed-by=Helm --overwrite
+        kubectl label namespace observability name=observability --overwrite
         
-        # Deploy with performance-optimized settings
+        # Deploy with performance-optimized settings, skipping namespace creation
         helm upgrade --install observability-stack ./helm/observability-stack \
           --namespace observability \
           --set global.environment=${{ env.ENVIRONMENT }} \
+          --set namespace.create=false \
           --set prometheus.resources.requests.memory=256Mi \
           --set prometheus.resources.requests.cpu=100m \
           --set prometheus.storage.size=5Gi \
