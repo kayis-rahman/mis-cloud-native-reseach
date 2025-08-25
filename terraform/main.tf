@@ -53,7 +53,7 @@ resource "google_compute_subnetwork" "subnet" {
 ############################
 resource "google_container_cluster" "gke" {
   name                     = "${var.project_name}-gke"
-  location                 = var.gcp_zone  # Use single zone instead of regional to save costs
+  location                 = var.gcp_region  # Use region instead of zone for consistency with CI/CD
   network                  = google_compute_network.vpc.self_link
   subnetwork               = google_compute_subnetwork.subnet.self_link
   remove_default_node_pool = true
