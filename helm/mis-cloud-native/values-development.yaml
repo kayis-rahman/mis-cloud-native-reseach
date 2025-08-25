@@ -1,19 +1,40 @@
 # Development Environment Values - Minimal Resources
 global:
   environment: "development"
-  imagePullPolicy: IfNotPresent
   imageRegistry: "ghcr.io"
+  imagePullPolicy: Always
   gcp:
-    projectId: ""  # Will be set via GitHub Actions
+    projectId: "mis-cloud-native-research"
     region: "us-central1"
-    cluster:
-      name: ""  # Will be set via GitHub Actions
-  ingress:
-    enabled: false  # Disabled for minimal setup
 
-# Minimal resources for development
+# Override API Gateway configuration for development
 services:
   api-gateway:
+    replicaCount: 1
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
+      limits:
+        memory: "512Mi"
+        cpu: "200m"
+    security:
+      apiKeys: "dev-api-key-12345"
+      headerName: "X-API-Key"
+    rateLimit:
+      replenishRate: 5
+      burstCapacity: 10
+    env:
+      - name: SPRING_PROFILES_ACTIVE
+        value: "development"
+      - name: LOGGING_LEVEL_COM_SPARKAGE
+        value: "DEBUG"
+      - name: LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_CLOUD_GATEWAY
+        value: "DEBUG"
+
+  # Enable only essential services for development
+  identity:
+    enabled: true
     replicaCount: 1
     resources:
       requests:
@@ -22,63 +43,47 @@ services:
       limits:
         memory: "256Mi"
         cpu: "100m"
-    security:
-      apiKeys: "dev-gateway-key-12345"
-      headerName: "X-API-Key"
-    rateLimit:
-      replenishRate: 100  # Higher for development testing
-      burstCapacity: 200
-
-  identity:
-    replicaCount: 1
-    resources:
-      requests:
-        memory: "64Mi"
-        cpu: "25m"
-      limits:
-        memory: "128Mi"
-        cpu: "50m"
 
   product:
+    enabled: true
     replicaCount: 1
     resources:
       requests:
-        memory: "64Mi"
-        cpu: "25m"
-      limits:
         memory: "128Mi"
         cpu: "50m"
+      limits:
+        memory: "256Mi"
+        cpu: "100m"
 
   cart:
-    replicaCount: 1
-    resources:
-      requests:
-        memory: "64Mi"
-        cpu: "25m"
-      limits:
-        memory: "128Mi"
-        cpu: "50m"
+    enabled: false  # Disable for development
 
   order:
-    replicaCount: 1
-    resources:
-      requests:
-        memory: "64Mi"
-        cpu: "25m"
-      limits:
-        memory: "128Mi"
-        cpu: "50m"
+    enabled: false  # Disable for development
 
   payment:
-    replicaCount: 1
+    enabled: false  # Disable for development
+
+# Development-specific observability
+observability:
+  enabled: true
+  prometheus:
+    enabled: true
     resources:
       requests:
-        memory: "64Mi"
-        cpu: "25m"
-      limits:
         memory: "128Mi"
         cpu: "50m"
-
-# Minimal observability for development
-observability:
-  enabled: false  # Disabled for minimal setup
+  grafana:
+    enabled: true
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "50m"
+  elk:
+    enabled: false  # Disable ELK in development to save resources
+  jaeger:
+    enabled: true
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "50m"

@@ -9,10 +9,11 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.context.annotation.Bean;
 
-import javax.servlet.FilterChain;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+// Updated to Jakarta namespace for Spring Boot 3+
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -31,27 +32,16 @@ public class ProductMetricsConfig {
 
     public class ProductMetricsFilter extends OncePerRequestFilter {
 
-        private final Counter requestCounter;
-        private final Timer requestTimer;
-        private final Counter productOperationCounter;
+        // Keep a base timer name; counters with dynamic tags will be resolved per-request
+        private final String requestCounterName = "product_service_requests_total";
+        private final String requestTimerName = "product_service_request_duration_seconds";
+        private final String productOperationCounterName = "product_operations_total";
 
         public ProductMetricsFilter() {
-            this.requestCounter = Counter.builder("product_service_requests_total")
-                    .description("Total requests to product service")
-                    .register(meterRegistry);
-
-            this.requestTimer = Timer.builder("product_service_request_duration_seconds")
-                    .description("Product service request duration")
-                    .register(meterRegistry);
-
-            this.productOperationCounter = Counter.builder("product_operations_total")
-                    .description("Total product operations")
-                    .register(meterRegistry);
-
-            // Register gauge for active requests
-            Gauge.builder("product_service_active_requests")
+            // Register gauge for active requests (object + value function)
+            Gauge.builder("product_service_active_requests", activeRequests, AtomicInteger::get)
                     .description("Active requests to product service")
-                    .register(meterRegistry, activeRequests, AtomicInteger::get);
+                    .register(meterRegistry);
         }
 
         @Override
@@ -64,24 +54,23 @@ public class ProductMetricsConfig {
             try {
                 filterChain.doFilter(request, response);
             } finally {
-                sample.stop(requestTimer);
-                activeRequests.decrementAndGet();
-
                 String method = request.getMethod();
                 String uri = request.getRequestURI();
                 String status = String.valueOf(response.getStatus());
 
-                requestCounter.increment(
-                    "method", method,
-                    "uri", uri,
-                    "status", status
-                );
+                // Record timer with tags
+                sample.stop(meterRegistry.timer(requestTimerName, "method", method, "uri", uri, "status", status));
+
+                // Increment request counter with tags
+                meterRegistry.counter(requestCounterName, "method", method, "uri", uri, "status", status).increment();
 
                 // Track specific product operations
                 if (uri.contains("/products")) {
                     String operation = getOperationType(method, uri);
-                    productOperationCounter.increment("operation", operation);
+                    meterRegistry.counter(productOperationCounterName, "operation", operation).increment();
                 }
+
+                activeRequests.decrementAndGet();
             }
         }
 

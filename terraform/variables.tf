@@ -90,9 +90,9 @@ variable "db_secret_id" {
 }
 
 variable "enable_deletion_protection" {
-  description = "Enable deletion protection for critical resources (GKE cluster and Cloud SQL). Set to false before terraform destroy."
+  description = "Enable deletion protection for critical resources"
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "ghcr_owner" {
@@ -102,7 +102,7 @@ variable "ghcr_owner" {
 }
 
 variable "ghcr_token_secret_id" {
-  description = "Secret Manager secret ID containing GHCR token (read:packages). If empty, GHCR secret will not be created."
+  description = "Se=cret Manager secret ID containing GHCR token (read:packages). If empty, GHCR secret will not be created."
   type        = string
   default     = ""
 }
@@ -137,4 +137,3 @@ variable "ghcr_token" {
   sensitive   = true
   default     = ""
 }
-

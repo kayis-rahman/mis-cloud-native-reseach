@@ -1,99 +1,277 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/bin/bash
 
-# Destroy all Terraform-managed infrastructure safely.
-# This script will:
-#  1) Disable deletion protection on protected resources (GKE, Cloud SQL) via terraform apply
-#  2) Run terraform destroy to remove all resources
-#
-# Requirements:
-#  - Terraform >= 1.5
-#  - Google Cloud auth configured (gcloud auth application-default login, or env vars in CI)
-#  - Environment variables set for Terraform variables, at minimum:
-#      TF_VAR_gcp_project_id
-#      (optional) TF_VAR_gcp_region, TF_VAR_gcp_zone
-#
-# Usage:
-#   scripts/destroy_all.sh
-#
-# Notes:
-#  - This only destroys resources managed by Terraform state under ./terraform.
-#  - It does not delete any remote state bucket if you use one.
+# Color codes for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
 
-ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-TF_DIR="${ROOT_DIR}/terraform"
+# Function to print colored output
+print_status() {
+    echo -e "${BLUE}[INFO]${NC} $1"
+}
 
-command -v terraform >/dev/null 2>&1 || { echo "[ERR] Terraform is required in PATH"; exit 1; }
+print_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
 
-PROJECT_ID=${TF_VAR_gcp_project_id:-}
-REGION=${TF_VAR_gcp_region:-us-central1}
-ZONE=${TF_VAR_gcp_zone:-us-central1-a}
+print_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
 
-if [[ -z "${PROJECT_ID}" ]]; then
-  echo "[ERR] Environment variable TF_VAR_gcp_project_id is required."
-  echo "      Example: export TF_VAR_gcp_project_id=your-gcp-project"
-  exit 1
-fi
+print_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
 
-cat <<CONFIRM
-You are about to DESTROY all Terraform-managed resources for:
-  - Project: ${PROJECT_ID}
-  - Region:  ${REGION}
-  - Zone:    ${ZONE}
+# Function to check if command exists
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
 
-This will remove:
-  - VPC and Subnet
-  - GKE cluster and node pool
-  - Cloud SQL instance, database, user
-  - Any Helm releases created by Terraform
+# Check required tools
+check_prerequisites() {
+    print_status "Checking prerequisites..."
 
-Type the project id (${PROJECT_ID}) to confirm:
-CONFIRM
+    if ! command_exists terraform; then
+        print_error "Terraform is not installed. Please install Terraform first."
+        exit 1
+    fi
 
-read -r INPUT
-if [[ "${INPUT}" != "${PROJECT_ID}" ]]; then
-  echo "[INFO] Aborted."
-  exit 0
-fi
+    if ! command_exists kubectl; then
+        print_warning "kubectl is not installed. Some Kubernetes cleanup may be skipped."
+    fi
 
-pushd "${TF_DIR}" >/dev/null
+    if ! command_exists helm; then
+        print_warning "helm is not installed. Some Helm cleanup may be skipped."
+    fi
 
-# Ensure init
-terraform init -input=false
+    if ! command_exists gcloud; then
+        print_warning "gcloud CLI is not installed. Some GCP-specific cleanup may be skipped."
+    fi
 
-# Try to fetch GKE credentials so the kubernetes provider can reach the cluster during refresh/destroy
-if command -v gcloud >/dev/null 2>&1; then
-  echo "[INFO] Fetching GKE credentials (best effort)"
-  set +e
-  CLUSTER_NAME=$(terraform output -raw cluster_name 2>/dev/null)
-  CLUSTER_LOC=$(terraform output -raw cluster_location 2>/dev/null)
-  PROJECT_OUT=$(terraform output -raw project_id 2>/dev/null)
-  if [[ -n "$CLUSTER_NAME" && -n "$CLUSTER_LOC" ]]; then
-    gcloud container clusters get-credentials "$CLUSTER_NAME" --region "$CLUSTER_LOC" --project "${PROJECT_OUT:-$PROJECT_ID}" >/dev/null 2>&1
-  fi
-  set -e
-fi
+    print_success "Prerequisites check completed"
+}
 
-# First, disable deletion protection safely
-echo "[INFO] Disabling deletion protection..."
-TF_VAR_enable_deletion_protection=false terraform apply -auto-approve -input=false -target=google_container_cluster.gke -target=google_sql_database_instance.postgres
+# Function to clean up Kubernetes resources
+cleanup_kubernetes() {
+    print_status "Cleaning up Kubernetes resources..."
 
-# Proactively remove Kubernetes resources from Terraform state to avoid needing live cluster creds during destroy
-set +e
-K8S_RES=$(terraform state list 2>/dev/null | grep '^kubernetes_' )
-set -e
-if [[ -n "$K8S_RES" ]]; then
-  echo "[INFO] Removing Kubernetes resources from Terraform state (they will not be deleted from the cluster explicitly):"
-  echo "$K8S_RES" | while read -r addr; do
-    echo "  - terraform state rm $addr"
-    terraform state rm "$addr" >/dev/null 2>&1 || true
-  done
-fi
+    if command_exists kubectl; then
+        # Check if kubectl context is set
+        if kubectl config current-context >/dev/null 2>&1; then
+            print_status "Cleaning up all Helm releases..."
+            if command_exists helm; then
+                helm list --all-namespaces -q | xargs -r helm uninstall
+                print_status "Waiting for Helm releases to be cleaned up..."
+                sleep 30
+            fi
 
-# Now, destroy everything
-echo "[INFO] Destroying all resources..."
-terraform destroy -auto-approve -input=false
+            print_status "Cleaning up all namespaces (except system ones)..."
+            kubectl get namespaces -o name | grep -v "kube-\|default" | xargs -r kubectl delete --timeout=60s
 
-popd >/dev/null
+            print_status "Force cleaning any remaining resources..."
+            kubectl delete all --all --all-namespaces --force --grace-period=0 || true
+            kubectl delete pvc --all --all-namespaces --force --grace-period=0 || true
+            kubectl delete secrets --all --all-namespaces --force --grace-period=0 || true
+            kubectl delete configmaps --all --all-namespaces --force --grace-period=0 || true
+        else
+            print_warning "No kubectl context found. Skipping Kubernetes cleanup."
+        fi
+    else
+        print_warning "kubectl not found. Skipping Kubernetes cleanup."
+    fi
+}
 
-echo "[OK] Destroy completed."
+# Function to clean up local Helm releases
+cleanup_helm_local() {
+    print_status "Cleaning up local Helm releases..."
+
+    if command_exists helm; then
+        # Force cleanup script if it exists
+        if [ -f "../scripts/force-cleanup-helm.sh" ]; then
+            print_status "Running force Helm cleanup script..."
+            bash ../scripts/force-cleanup-helm.sh || true
+        fi
+
+        if [ -f "../scripts/quick-helm-cleanup.sh" ]; then
+            print_status "Running quick Helm cleanup script..."
+            bash ../scripts/quick-helm-cleanup.sh || true
+        fi
+    fi
+}
+
+# Function to disable deletion protection
+disable_deletion_protection() {
+    print_status "Disabling deletion protection..."
+
+    # Create a temporary terraform file to disable deletion protection
+    cat > disable_protection.tf << EOF
+# Temporary override to disable deletion protection
+terraform {
+  required_providers {
+    google = {
+      source  = "hashicorp/google"
+      version = "~> 5.0"
+    }
+  }
+}
+
+variable "gcp_project_id" {
+  type = string
+}
+
+variable "project_name" {
+  type = string
+  default = "mis-cloud-native"
+}
+
+variable "gcp_region" {
+  type = string
+  default = "us-central1"
+}
+
+# Override deletion protection
+locals {
+  enable_deletion_protection = false
+}
+EOF
+
+    print_status "Applying deletion protection override..."
+    terraform init -upgrade || true
+    terraform apply -auto-approve -var="enable_deletion_protection=false" || true
+
+    # Clean up temporary file
+    rm -f disable_protection.tf
+}
+
+# Function to destroy Terraform infrastructure
+destroy_terraform() {
+    print_status "Destroying Terraform infrastructure..."
+
+    cd terraform || {
+        print_error "Cannot find terraform directory"
+        exit 1
+    }
+
+    # Initialize Terraform
+    print_status "Initializing Terraform..."
+    terraform init -upgrade
+
+    # Disable deletion protection first
+    disable_deletion_protection
+
+    # Plan destroy to see what will be destroyed
+    print_status "Planning Terraform destroy..."
+    terraform plan -destroy
+
+    # Ask for confirmation
+    echo
+    print_warning "This will destroy ALL cloud resources including:"
+    print_warning "- GKE Cluster and node pools"
+    print_warning "- Cloud SQL PostgreSQL instance"
+    print_warning "- VPC network and subnets"
+    print_warning "- Secret Manager secrets"
+    print_warning "- Service accounts and IAM bindings"
+    print_warning "- All data will be permanently lost!"
+    echo
+    read -p "Are you sure you want to proceed? (type 'yes' to confirm): " confirmation
+
+    if [ "$confirmation" != "yes" ]; then
+        print_error "Destruction cancelled by user"
+        exit 1
+    fi
+
+    # Destroy infrastructure
+    print_status "Destroying infrastructure... This may take several minutes..."
+    terraform destroy -auto-approve
+
+    if [ $? -eq 0 ]; then
+        print_success "Terraform destruction completed successfully"
+    else
+        print_error "Terraform destruction failed. Some resources may need manual cleanup."
+        print_status "Attempting force cleanup..."
+
+        # Try to destroy specific problematic resources
+        terraform destroy -auto-approve -target=google_container_cluster.gke || true
+        terraform destroy -auto-approve -target=google_sql_database_instance.postgres || true
+        terraform destroy -auto-approve -target=google_compute_network.vpc || true
+
+        # Final attempt
+        terraform destroy -auto-approve || true
+    fi
+
+    # Clean up Terraform state
+    print_status "Cleaning up Terraform state..."
+    rm -rf .terraform/
+    rm -f terraform.tfstate*
+    rm -f .terraform.lock.hcl
+
+    cd ..
+}
+
+# Function to clean up Docker resources
+cleanup_docker() {
+    print_status "Cleaning up local Docker resources..."
+
+    if command_exists docker; then
+        print_status "Stopping all containers..."
+        docker stop $(docker ps -aq) 2>/dev/null || true
+
+        print_status "Removing all containers..."
+        docker rm $(docker ps -aq) 2>/dev/null || true
+
+        print_status "Removing all images with project name..."
+        docker images | grep "mis-cloud-native\|api-gateway\|cart\|identity\|order\|payment\|product" | awk '{print $3}' | xargs -r docker rmi -f || true
+
+        print_status "Pruning Docker system..."
+        docker system prune -af || true
+        docker volume prune -f || true
+        docker network prune -f || true
+    else
+        print_warning "Docker not found. Skipping Docker cleanup."
+    fi
+}
+
+# Function to clean up local files
+cleanup_local_files() {
+    print_status "Cleaning up local generated files..."
+
+    # Clean up build artifacts
+    find services/ -name "target" -type d -exec rm -rf {} + 2>/dev/null || true
+    find services/ -name "*.log" -type f -delete 2>/dev/null || true
+    find . -name "*.jar" -type f -delete 2>/dev/null || true
+
+    # Clean up any local configuration files
+    rm -f kubeconfig
+    rm -f .env
+    rm -f secrets.yaml
+
+    print_success "Local cleanup completed"
+}
+
+# Main execution
+main() {
+    print_status "Starting complete infrastructure destruction..."
+    echo "=============================================="
+
+    check_prerequisites
+
+    # Clean up in order
+    cleanup_helm_local
+    cleanup_kubernetes
+    destroy_terraform
+    cleanup_docker
+    cleanup_local_files
+
+    echo "=============================================="
+    print_success "Complete destruction finished!"
+    print_status "Your environment has been reset and is ready for a fresh deployment."
+    print_status "Next steps:"
+    print_status "1. Update terraform/variables.tf with your GCP project ID"
+    print_status "2. Run terraform init in the terraform directory"
+    print_status "3. Plan and apply your new infrastructure"
+}
+
+# Execute main function
+main "$@"

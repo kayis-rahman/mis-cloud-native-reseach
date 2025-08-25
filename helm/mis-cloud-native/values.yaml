@@ -70,13 +70,14 @@ services:
   api-gateway:
     enabled: true
     name: api-gateway
-    image: "api-gateway:latest"
+    image: "ghcr.io/kayis-rahman/mis-cloud-native-research/api-gateway:latest"
     replicaCount: 1
     containerPort: 8080
     usesDb: false
     service:
       type: ClusterIP
       port: 8080
+      targetPort: 8080
     resources:
       requests:
         memory: "512Mi"
@@ -91,6 +92,13 @@ services:
     rateLimit:
       replenishRate: 10
       burstCapacity: 20
+    # Service discovery URIs (use Kubernetes service names)
+    serviceUris:
+      identity: "http://identity-service:8085"
+      product: "http://product-service:8081"
+      cart: "http://cart-service:8082"
+      order: "http://order-service:8083"
+      payment: "http://payment-service:8084"
     env:
       # Use environment-specific profile
       - name: SPRING_PROFILES_ACTIVE
@@ -98,22 +106,43 @@ services:
       - name: SECURITY_API_KEYS
         valueFrom:
           secretRef:
-            name: api-gateway-secrets
-            key: api-keys
+            name: api-gateway-security
+            key: apiKeys
       - name: SECURITY_HEADER_NAME
         value: "{{ .Values.services.api-gateway.security.headerName }}"
       - name: RATELIMIT_REPLENISH_RATE
         value: "{{ .Values.services.api-gateway.rateLimit.replenishRate }}"
       - name: RATELIMIT_BURST_CAPACITY
         value: "{{ .Values.services.api-gateway.rateLimit.burstCapacity }}"
+      # Service URIs
+      - name: IDENTITY_URI
+        value: "{{ .Values.services.api-gateway.serviceUris.identity }}"
+      - name: PRODUCT_URI
+        value: "{{ .Values.services.api-gateway.serviceUris.product }}"
+      - name: CART_URI
+        value: "{{ .Values.services.api-gateway.serviceUris.cart }}"
+      - name: ORDER_URI
+        value: "{{ .Values.services.api-gateway.serviceUris.order }}"
+      - name: PAYMENT_URI
+        value: "{{ .Values.services.api-gateway.serviceUris.payment }}"
+      # Observability configuration
+      - name: JAEGER_ENDPOINT
+        value: "http://jaeger-collector.observability-{{ .Values.global.environment }}:14268/api/traces"
+      - name: ZIPKIN_URL
+        value: "http://jaeger-collector.observability-{{ .Values.global.environment }}:9411"
+      # Redis for rate limiting (optional, falls back to in-memory)
+      - name: SPRING_REDIS_HOST
+        value: "redis-service.{{ .Values.global.environment }}"
+      - name: SPRING_REDIS_PORT
+        value: "6379"
     livenessProbe:
-      path: /actuator/health
+      path: /actuator/health/liveness
       initialDelaySeconds: 30
       periodSeconds: 10
       timeoutSeconds: 5
       failureThreshold: 3
     readinessProbe:
-      path: /actuator/health
+      path: /actuator/health/readiness
       initialDelaySeconds: 20
       periodSeconds: 10
       timeoutSeconds: 5
@@ -123,6 +152,39 @@ services:
       prometheus.io/scrape: "true"
       prometheus.io/path: "/actuator/prometheus"
       prometheus.io/port: "8080"
+      # Jaeger tracing
+      jaeger.io/inject: "true"
+    networkPolicy:
+      enabled: true
+      ingress:
+        - from:
+            - namespaceSelector:
+                matchLabels:
+                  name: "{{ .Values.global.environment }}"
+            - namespaceSelector:
+                matchLabels:
+                  name: "observability-{{ .Values.global.environment }}"
+      egress:
+        - to: []    # Allow all egress (can be restricted later)
+          ports:
+            - port: 53
+              protocol: UDP
+            - port: 53
+              protocol: TCP
+            - port: 8081  # Product service
+              protocol: TCP
+            - port: 8082  # Cart service
+              protocol: TCP
+            - port: 8083  # Order service
+              protocol: TCP
+            - port: 8084  # Payment service
+              protocol: TCP
+            - port: 8085  # Identity service
+              protocol: TCP
+            - port: 6379  # Redis
+              protocol: TCP
+            - port: 14268 # Jaeger
+              protocol: TCP
 
   identity:
     enabled: true

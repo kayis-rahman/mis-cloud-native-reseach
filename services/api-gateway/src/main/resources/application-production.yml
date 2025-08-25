@@ -1,74 +1,212 @@
 spring:
   application:
     name: api-gateway
+  main:
+    web-application-type: reactive
+  profiles:
+    active: production
   cloud:
     gateway:
+      default-filters:
+        - RemoveRequestHeader=Cookie
+        - RemoveResponseHeader=Server
+        - name: RequestRateLimiter
+          args:
+            redis-rate-limiter.replenishRate: ${RATELIMIT_REPLENISH_RATE:50}
+            redis-rate-limiter.burstCapacity: ${RATELIMIT_BURST_CAPACITY:100}
+            key-resolver: "#{@ipKeyResolver}"
+        - name: Retry
+          args:
+            retries: 3
+            statuses: BAD_GATEWAY,GATEWAY_TIMEOUT
+            methods: GET,POST
+            backoff:
+              firstBackoff: 50ms
+              maxBackoff: 500ms
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOriginPatterns:
+              - "https://*.yourdomain.com"
+              - "https://yourdomain.com"
+            allowedMethods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+            allowedHeaders: "*"
+            allowCredentials: true
+            maxAge: 3600
       routes:
-        - id: product-service
-          uri: http://product-service.production.svc.cluster.local:8081
+        - id: identity
+          uri: ${IDENTITY_URI:http://identity-service:8085}
+          predicates:
+            - Path=/api/identity/**
+          filters:
+            - StripPrefix=2
+            - name: CircuitBreaker
+              args:
+                name: identity-cb
+                fallbackUri: forward:/fallback/identity
+            - name: RequestSize
+              args:
+                maxSize: 5MB
+        - id: product
+          uri: ${PRODUCT_URI:http://product-service:8081}
           predicates:
             - Path=/api/products/**
-        - id: order-service
-          uri: http://order-service.production.svc.cluster.local:8082
-          predicates:
-            - Path=/api/orders/**
-        - id: cart-service
-          uri: http://cart-service.production.svc.cluster.local:8083
+          filters:
+            - StripPrefix=2
+            - name: CircuitBreaker
+              args:
+                name: product-cb
+                fallbackUri: forward:/fallback/product
+        - id: cart
+          uri: ${CART_URI:http://cart-service:8082}
           predicates:
             - Path=/api/cart/**
-        - id: payment-service
-          uri: http://payment-service.production.svc.cluster.local:8084
+          filters:
+            - StripPrefix=2
+            - name: CircuitBreaker
+              args:
+                name: cart-cb
+                fallbackUri: forward:/fallback/cart
+        - id: order
+          uri: ${ORDER_URI:http://order-service:8083}
+          predicates:
+            - Path=/api/orders/**
+          filters:
+            - StripPrefix=2
+            - name: CircuitBreaker
+              args:
+                name: order-cb
+                fallbackUri: forward:/fallback/order
+        - id: payment
+          uri: ${PAYMENT_URI:http://payment-service:8084}
           predicates:
             - Path=/api/payments/**
-        - id: identity-service
-          uri: http://identity-service.production.svc.cluster.local:8085
-          predicates:
-            - Path=/api/auth/**
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: ${JWT_ISSUER_URI:http://identity-service.production.svc.cluster.local:8085}
-          jwk-set-uri: ${JWT_JWK_SET_URI:http://identity-service.production.svc.cluster.local:8085/.well-known/jwks.json}
+          filters:
+            - StripPrefix=2
+            - name: CircuitBreaker
+              args:
+                name: payment-cb
+                fallbackUri: forward:/fallback/payment
 
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
+  compression:
+    enabled: true
+    mime-types: application/json,text/html,text/xml,text/plain,text/css,application/javascript
 
+# Enhanced security for production
+security:
+  api-keys: ${SECURITY_API_KEYS:prod-secure-api-key}
+  header-name: ${SECURITY_HEADER_NAME:X-API-Key}
+
+# Enhanced circuit breaker configuration for production
+resilience4j:
+  circuitbreaker:
+    instances:
+      identity-cb:
+        registerHealthIndicator: true
+        slidingWindowSize: 20
+        permittedNumberOfCallsInHalfOpenState: 5
+        slidingWindowType: COUNT_BASED
+        waitDurationInOpenState: 10s
+        failureRateThreshold: 30
+        eventConsumerBufferSize: 20
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+      product-cb:
+        registerHealthIndicator: true
+        slidingWindowSize: 20
+        permittedNumberOfCallsInHalfOpenState: 5
+        slidingWindowType: COUNT_BASED
+        waitDurationInOpenState: 10s
+        failureRateThreshold: 30
+        eventConsumerBufferSize: 20
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+      cart-cb:
+        registerHealthIndicator: true
+        slidingWindowSize: 20
+        permittedNumberOfCallsInHalfOpenState: 5
+        slidingWindowType: COUNT_BASED
+        waitDurationInOpenState: 10s
+        failureRateThreshold: 30
+        eventConsumerBufferSize: 20
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+      order-cb:
+        registerHealthIndicator: true
+        slidingWindowSize: 20
+        permittedNumberOfCallsInHalfOpenState: 5
+        slidingWindowType: COUNT_BASED
+        waitDurationInOpenState: 10s
+        failureRateThreshold: 30
+        eventConsumerBufferSize: 20
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+      payment-cb:
+        registerHealthIndicator: true
+        slidingWindowSize: 20
+        permittedNumberOfCallsInHalfOpenState: 5
+        slidingWindowType: COUNT_BASED
+        waitDurationInOpenState: 10s
+        failureRateThreshold: 30
+        eventConsumerBufferSize: 20
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+
+# Production logging configuration
 logging:
   level:
-    org.springframework.cloud.gateway: INFO
+    com.sparkage: INFO
+    org.springframework.cloud.gateway: WARN
     org.springframework.web: WARN
     org.springframework.security: WARN
-    com.sparkage: INFO
+    org.springframework.boot.actuate: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{traceId:-},%X{spanId:-}] %logger{36} - %msg%n"
   file:
-    name: logs/api-gateway.log
+    name: /app/logs/api-gateway.log
   logback:
     rollingpolicy:
       max-file-size: 100MB
-      total-size-cap: 5GB
-      max-history: 30
+      max-history: 7
+      total-size-cap: 1GB
 
+# Enhanced management endpoints for production with security
 management:
   endpoints:
     web:
       exposure:
-        include: health,metrics,prometheus
+        include: health,info,metrics,prometheus
+      base-path: /actuator
   endpoint:
     health:
-      show-details: never
+      enabled: true
+      show-details: when-authorized
+      probes:
+        enabled: true
+    metrics:
+      enabled: true
+    prometheus:
+      enabled: true
   metrics:
     export:
       prometheus:
         enabled: true
+        step: 30s
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+        resilience4j.circuitbreaker.calls: true
+      percentiles:
+        http.server.requests: 0.5, 0.9, 0.95, 0.99
+        resilience4j.circuitbreaker.calls: 0.5, 0.9, 0.95, 0.99
+    tags:
+      application: ${spring.application.name}
+      environment: production
+      version: ${APP_VERSION:unknown}
 
-resilience4j:
-  circuitbreaker:
-    instances:
-      default:
-        sliding-window-size: 10
-        minimum-number-of-calls: 5
-        failure-rate-threshold: 50
-
-LOGSTASH_HOST: ${LOGSTASH_HOST:logstash-service.observability.svc.cluster.local}
-LOGSTASH_PORT: ${LOGSTASH_PORT:5000}
-ENV: production
+# Tracing configuration
+spring.sleuth:
+  sampler:
+    probability: 0.1
+  zipkin:
+    base-url: ${ZIPKIN_URL:http://jaeger-collector:14268}
+  jaeger:
+    remote-sender:
+      endpoint: ${JAEGER_ENDPOINT:http://jaeger-collector:14268/api/traces}

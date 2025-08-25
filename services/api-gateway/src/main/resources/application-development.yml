@@ -1,44 +1,142 @@
 spring:
   application:
     name: api-gateway
+  main:
+    web-application-type: reactive
+  profiles:
+    active: development
   cloud:
     gateway:
+      default-filters:
+        - RemoveRequestHeader=Cookie
+        - RemoveResponseHeader=Server
+        - name: RequestRateLimiter
+          args:
+            redis-rate-limiter.replenishRate: ${RATELIMIT_REPLENISH_RATE:10}
+            redis-rate-limiter.burstCapacity: ${RATELIMIT_BURST_CAPACITY:20}
+            key-resolver: "#{@ipKeyResolver}"
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins: "*"
+            allowedMethods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+            allowedHeaders: "*"
+            maxAge: 3600
       routes:
-        - id: product-service
-          uri: http://product-service:8081
+        - id: identity
+          uri: ${IDENTITY_URI:http://identity-service:8085}
+          predicates:
+            - Path=/api/identity/**
+          filters:
+            - StripPrefix=2
+            - name: CircuitBreaker
+              args:
+                name: identity-cb
+                fallbackUri: forward:/fallback/identity
+        - id: product
+          uri: ${PRODUCT_URI:http://product-service:8081}
           predicates:
             - Path=/api/products/**
-        - id: order-service
-          uri: http://order-service:8082
-          predicates:
-            - Path=/api/orders/**
-        - id: cart-service
-          uri: http://cart-service:8083
+          filters:
+            - StripPrefix=2
+            - name: CircuitBreaker
+              args:
+                name: product-cb
+                fallbackUri: forward:/fallback/product
+        - id: cart
+          uri: ${CART_URI:http://cart-service:8082}
           predicates:
             - Path=/api/cart/**
-        - id: payment-service
-          uri: http://payment-service:8084
+          filters:
+            - StripPrefix=2
+            - name: CircuitBreaker
+              args:
+                name: cart-cb
+                fallbackUri: forward:/fallback/cart
+        - id: order
+          uri: ${ORDER_URI:http://order-service:8083}
+          predicates:
+            - Path=/api/orders/**
+          filters:
+            - StripPrefix=2
+            - name: CircuitBreaker
+              args:
+                name: order-cb
+                fallbackUri: forward:/fallback/order
+        - id: payment
+          uri: ${PAYMENT_URI:http://payment-service:8084}
           predicates:
             - Path=/api/payments/**
-        - id: identity-service
-          uri: http://identity-service:8085
-          predicates:
-            - Path=/api/auth/**
-  security:
-    user:
-      name: admin
-      password: admin123
+          filters:
+            - StripPrefix=2
+            - name: CircuitBreaker
+              args:
+                name: payment-cb
+                fallbackUri: forward:/fallback/payment
 
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
 
+# Basic security configuration
+security:
+  api-keys: ${SECURITY_API_KEYS:dev-api-key}
+  header-name: ${SECURITY_HEADER_NAME:X-API-Key}
+
+# Circuit breaker configuration
+resilience4j:
+  circuitbreaker:
+    instances:
+      identity-cb:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        permittedNumberOfCallsInHalfOpenState: 3
+        slidingWindowType: COUNT_BASED
+        waitDurationInOpenState: 5s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+      product-cb:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        permittedNumberOfCallsInHalfOpenState: 3
+        slidingWindowType: COUNT_BASED
+        waitDurationInOpenState: 5s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+      cart-cb:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        permittedNumberOfCallsInHalfOpenState: 3
+        slidingWindowType: COUNT_BASED
+        waitDurationInOpenState: 5s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+      order-cb:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        permittedNumberOfCallsInHalfOpenState: 3
+        slidingWindowType: COUNT_BASED
+        waitDurationInOpenState: 5s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+      payment-cb:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        permittedNumberOfCallsInHalfOpenState: 3
+        slidingWindowType: COUNT_BASED
+        waitDurationInOpenState: 5s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+
+# Logging configuration
 logging:
   level:
-    org.springframework.cloud.gateway: DEBUG
-    org.springframework.web: DEBUG
-    reactor.netty: DEBUG
-    com.sparkage: DEBUG
+    com.sparkage: INFO
+    org.springframework.cloud.gateway: INFO
+    org.springframework.web: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{traceId:-},%X{spanId:-}] %logger{36} - %msg%n"
 
+# Management endpoints for development
 management:
   endpoints:
     web:
@@ -46,4 +144,23 @@ management:
         include: health,info,metrics,prometheus,gateway
   endpoint:
     health:
+      enabled: true
       show-details: always
+      probes:
+        enabled: true
+    metrics:
+      enabled: true
+    prometheus:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      percentiles:
+        http.server.requests: 0.5, 0.9, 0.95, 0.99
+    tags:
+      application: ${spring.application.name}
+      environment: development
