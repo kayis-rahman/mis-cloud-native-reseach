@@ -167,6 +167,65 @@ jobs:
       with:
         credentials_json: ${{ secrets.GCP_SA_KEY }}
 
+    - name: Validate Google Cloud Authentication
+      if: env.GCP_SA_KEY != ''
+      run: |
+        echo "🔐 Validating Google Cloud Authentication..."
+
+        # The google-github-actions/auth creates a credentials file but doesn't activate it for gcloud
+        # We need to activate the service account manually
+
+        # Check if credentials file was created by the auth action
+        if [ -n "$GOOGLE_APPLICATION_CREDENTIALS" ] && [ -f "$GOOGLE_APPLICATION_CREDENTIALS" ]; then
+          echo "✅ Found credentials file: $GOOGLE_APPLICATION_CREDENTIALS"
+
+          # Activate the service account
+          echo "🔑 Activating service account..."
+          gcloud auth activate-service-account --key-file="$GOOGLE_APPLICATION_CREDENTIALS"
+
+          # Set the project
+          echo "📋 Setting project to: ${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}"
+          gcloud config set project "${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}"
+
+        else
+          echo "❌ No credentials file found from auth action"
+          echo "GOOGLE_APPLICATION_CREDENTIALS: $GOOGLE_APPLICATION_CREDENTIALS"
+          exit 1
+        fi
+
+        # Now validate the authentication
+        echo "🧪 Testing authentication..."
+        if gcloud auth list --filter=status:ACTIVE --format="value(account)" | grep -q "."; then
+          echo "✅ Successfully authenticated with Google Cloud"
+
+          # Display active account info
+          echo "📋 Active account:"
+          gcloud auth list --filter=status:ACTIVE --format="table(account,status)"
+
+          # Test project access
+          echo "🔍 Testing project access..."
+          if gcloud projects describe "${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}" --quiet; then
+            echo "✅ Successfully accessed project: ${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}"
+          else
+            echo "❌ Failed to access project. Check service account permissions."
+            exit 1
+          fi
+
+          # Test API access (basic test)
+          echo "🧪 Testing basic API access..."
+          if gcloud services list --limit=1 --quiet >/dev/null 2>&1; then
+            echo "✅ Service account has basic API access"
+          else
+            echo "⚠️  Limited API access - may need additional permissions for infrastructure setup"
+          fi
+
+        else
+          echo "❌ Authentication failed - no active accounts found after activation"
+          echo "Debug info:"
+          gcloud auth list
+          exit 1
+        fi
+
     - name: Set up Google Cloud SDK
       if: env.GCP_SA_KEY != ''
       uses: google-github-actions/setup-gcloud@v2
@@ -261,6 +320,65 @@ jobs:
         workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
         service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
 
+    - name: Validate Google Cloud Authentication
+      if: env.GCP_SA_KEY != ''
+      run: |
+        echo "🔐 Validating Google Cloud Authentication..."
+
+        # The google-github-actions/auth creates a credentials file but doesn't activate it for gcloud
+        # We need to activate the service account manually
+
+        # Check if credentials file was created by the auth action
+        if [ -n "$GOOGLE_APPLICATION_CREDENTIALS" ] && [ -f "$GOOGLE_APPLICATION_CREDENTIALS" ]; then
+          echo "✅ Found credentials file: $GOOGLE_APPLICATION_CREDENTIALS"
+
+          # Activate the service account
+          echo "🔑 Activating service account..."
+          gcloud auth activate-service-account --key-file="$GOOGLE_APPLICATION_CREDENTIALS"
+
+          # Set the project
+          echo "📋 Setting project to: ${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}"
+          gcloud config set project "${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}"
+
+        else
+          echo "❌ No credentials file found from auth action"
+          echo "GOOGLE_APPLICATION_CREDENTIALS: $GOOGLE_APPLICATION_CREDENTIALS"
+          exit 1
+        fi
+
+        # Now validate the authentication
+        echo "🧪 Testing authentication..."
+        if gcloud auth list --filter=status:ACTIVE --format="value(account)" | grep -q "."; then
+          echo "✅ Successfully authenticated with Google Cloud"
+
+          # Display active account info
+          echo "📋 Active account:"
+          gcloud auth list --filter=status:ACTIVE --format="table(account,status)"
+
+          # Test project access
+          echo "🔍 Testing project access..."
+          if gcloud projects describe "${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}" --quiet; then
+            echo "✅ Successfully accessed project: ${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}"
+          else
+            echo "❌ Failed to access project. Check service account permissions."
+            exit 1
+          fi
+
+          # Test API access (basic test)
+          echo "🧪 Testing basic API access..."
+          if gcloud services list --limit=1 --quiet >/dev/null 2>&1; then
+            echo "✅ Service account has basic API access"
+          else
+            echo "⚠️  Limited API access - may need additional permissions for infrastructure setup"
+          fi
+
+        else
+          echo "❌ Authentication failed - no active accounts found after activation"
+          echo "Debug info:"
+          gcloud auth list
+          exit 1
+        fi
+
     - name: Set up Google Cloud SDK
       if: env.GCP_SA_KEY != ''
       uses: google-github-actions/setup-gcloud@v2
@@ -344,6 +462,65 @@ jobs:
       with:
         credentials_json: ${{ secrets.GCP_SA_KEY }}
 
+    - name: Validate Google Cloud Authentication
+      if: env.GCP_SA_KEY != ''
+      run: |
+        echo "🔐 Validating Google Cloud Authentication..."
+
+        # The google-github-actions/auth creates a credentials file but doesn't activate it for gcloud
+        # We need to activate the service account manually
+
+        # Check if credentials file was created by the auth action
+        if [ -n "$GOOGLE_APPLICATION_CREDENTIALS" ] && [ -f "$GOOGLE_APPLICATION_CREDENTIALS" ]; then
+          echo "✅ Found credentials file: $GOOGLE_APPLICATION_CREDENTIALS"
+
+          # Activate the service account
+          echo "🔑 Activating service account..."
+          gcloud auth activate-service-account --key-file="$GOOGLE_APPLICATION_CREDENTIALS"
+
+          # Set the project
+          echo "📋 Setting project to: ${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}"
+          gcloud config set project "${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}"
+
+        else
+          echo "❌ No credentials file found from auth action"
+          echo "GOOGLE_APPLICATION_CREDENTIALS: $GOOGLE_APPLICATION_CREDENTIALS"
+          exit 1
+        fi
+
+        # Now validate the authentication
+        echo "🧪 Testing authentication..."
+        if gcloud auth list --filter=status:ACTIVE --format="value(account)" | grep -q "."; then
+          echo "✅ Successfully authenticated with Google Cloud"
+
+          # Display active account info
+          echo "📋 Active account:"
+          gcloud auth list --filter=status:ACTIVE --format="table(account,status)"
+
+          # Test project access
+          echo "🔍 Testing project access..."
+          if gcloud projects describe "${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}" --quiet; then
+            echo "✅ Successfully accessed project: ${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}"
+          else
+            echo "❌ Failed to access project. Check service account permissions."
+            exit 1
+          fi
+
+          # Test API access (basic test)
+          echo "🧪 Testing basic API access..."
+          if gcloud services list --limit=1 --quiet >/dev/null 2>&1; then
+            echo "✅ Service account has basic API access"
+          else
+            echo "⚠️  Limited API access - may need additional permissions for infrastructure setup"
+          fi
+
+        else
+          echo "❌ Authentication failed - no active accounts found after activation"
+          echo "Debug info:"
+          gcloud auth list
+          exit 1
+        fi
+
     - name: Set up Google Cloud SDK
       if: env.GCP_SA_KEY != ''
       uses: google-github-actions/setup-gcloud@v2
@@ -426,6 +603,65 @@ jobs:
       uses: google-github-actions/auth@v2
       with:
         credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+    - name: Validate Google Cloud Authentication
+      if: env.GCP_SA_KEY != ''
+      run: |
+        echo "🔐 Validating Google Cloud Authentication..."
+
+        # The google-github-actions/auth creates a credentials file but doesn't activate it for gcloud
+        # We need to activate the service account manually
+
+        # Check if credentials file was created by the auth action
+        if [ -n "$GOOGLE_APPLICATION_CREDENTIALS" ] && [ -f "$GOOGLE_APPLICATION_CREDENTIALS" ]; then
+          echo "✅ Found credentials file: $GOOGLE_APPLICATION_CREDENTIALS"
+
+          # Activate the service account
+          echo "🔑 Activating service account..."
+          gcloud auth activate-service-account --key-file="$GOOGLE_APPLICATION_CREDENTIALS"
+
+          # Set the project
+          echo "📋 Setting project to: ${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}"
+          gcloud config set project "${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}"
+
+        else
+          echo "❌ No credentials file found from auth action"
+          echo "GOOGLE_APPLICATION_CREDENTIALS: $GOOGLE_APPLICATION_CREDENTIALS"
+          exit 1
+        fi
+
+        # Now validate the authentication
+        echo "🧪 Testing authentication..."
+        if gcloud auth list --filter=status:ACTIVE --format="value(account)" | grep -q "."; then
+          echo "✅ Successfully authenticated with Google Cloud"
+
+          # Display active account info
+          echo "📋 Active account:"
+          gcloud auth list --filter=status:ACTIVE --format="table(account,status)"
+
+          # Test project access
+          echo "🔍 Testing project access..."
+          if gcloud projects describe "${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}" --quiet; then
+            echo "✅ Successfully accessed project: ${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}"
+          else
+            echo "❌ Failed to access project. Check service account permissions."
+            exit 1
+          fi
+
+          # Test API access (basic test)
+          echo "🧪 Testing basic API access..."
+          if gcloud services list --limit=1 --quiet >/dev/null 2>&1; then
+            echo "✅ Service account has basic API access"
+          else
+            echo "⚠️  Limited API access - may need additional permissions for infrastructure setup"
+          fi
+
+        else
+          echo "❌ Authentication failed - no active accounts found after activation"
+          echo "Debug info:"
+          gcloud auth list
+          exit 1
+        fi
 
     - name: Set up Google Cloud SDK
       if: env.GCP_SA_KEY != ''
