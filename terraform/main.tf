@@ -57,6 +57,21 @@ resource "google_service_account" "gke_node_service_account" {
   description  = "Service account for GKE node pools"
 }
 
+# Grant the current user/service account the ability to use the default compute service account
+# This handles both user authentication and service account authentication
+resource "google_service_account_iam_member" "gke_default_compute_service_account_user" {
+  service_account_id = "projects/${var.gcp_project_id}/serviceAccounts/${data.google_project.current.number}-compute@developer.gserviceaccount.com"
+  role               = "roles/iam.serviceAccountUser"
+  member             = var.terraform_service_account != "" ? "serviceAccount:${var.terraform_service_account}" : "user:${data.google_client_openid_userinfo.me.email}"
+}
+
+# Data sources to get current project and user info
+data "google_project" "current" {
+  project_id = var.gcp_project_id
+}
+
+data "google_client_openid_userinfo" "me" {}
+
 resource "google_project_iam_member" "gke_node_service_account_roles" {
   for_each = toset([
     "roles/logging.logWriter",

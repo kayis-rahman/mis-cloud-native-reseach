@@ -43,6 +43,11 @@ variable "gke_version" {
   default     = "1.29"
 }
 
+variable "terraform_service_account" {
+  description = "Service account email used for Terraform authentication (leave empty for user authentication)"
+  type        = string
+  default     = ""
+}
 
 variable "db_username" {
   description = "Database user"
