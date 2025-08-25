@@ -6,18 +6,27 @@ locals {
   ghcr_enabled = var.ghcr_owner != "" && (var.ghcr_token != "" || var.ghcr_token_secret_id != "")
 }
 
-# Only read from Secret Manager if no direct token provided
+# Only read from Secret Manager if no direct token provided and secret exists
 data "google_secret_manager_secret_version" "ghcr_token" {
   count      = (var.ghcr_token == "" && var.ghcr_token_secret_id != "" && local.ghcr_enabled) ? 1 : 0
   secret     = var.ghcr_token_secret_id
   version    = "latest"
-  depends_on = [google_container_node_pool.primary]
+  depends_on = [
+    google_container_node_pool.primary,
+    google_secret_manager_secret.ghcr_pat,
+    google_secret_manager_secret_version.ghcr_pat
+  ]
 }
 
 # Build dockerconfigjson content (raw JSON string)
 locals {
-  ghcr_effective_token = var.ghcr_token != "" ? var.ghcr_token : try(data.google_secret_manager_secret_version.ghcr_token[0].secret_data, "")
-  ghcr_dockerconfigjson = local.ghcr_enabled ? jsonencode({
+  # Use direct token if provided, otherwise try to get from Secret Manager
+  ghcr_effective_token = var.ghcr_token != "" ? var.ghcr_token : (
+    length(data.google_secret_manager_secret_version.ghcr_token) > 0 ?
+    data.google_secret_manager_secret_version.ghcr_token[0].secret_data : ""
+  )
+
+  ghcr_dockerconfigjson = local.ghcr_enabled && local.ghcr_effective_token != "" ? jsonencode({
     auths = {
       "ghcr.io" = {
         username = var.ghcr_owner
@@ -50,7 +59,7 @@ resource "kubernetes_secret" "ghcr_creds" {
     create_before_destroy = true
     ignore_changes = [
       # Ignore metadata changes that don't affect functionality
-      metadata[0].labels
+      metadata[0].annotations
     ]
   }
 

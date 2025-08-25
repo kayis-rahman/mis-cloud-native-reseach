@@ -143,7 +143,7 @@ variable "create_k8s_db_secrets" {
 variable "create_ghcr_secret" {
   description = "Whether to create the Secret Manager secret container for GHCR token (no versions)."
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "ghcr_token" {
