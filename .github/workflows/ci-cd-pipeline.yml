@@ -120,11 +120,211 @@ jobs:
         docker push "$IMAGE"
         echo "✅ Successfully pushed $IMAGE"
 
-  # Job 3: Deploy to Development
-  deploy-development:
-    name: Deploy API Gateway with Observability (Development)
+  # Job 3: Deploy Observability Stack (Development)
+  deploy-observability-development:
+    name: Deploy Observability Stack (Development)
     runs-on: ubuntu-latest
     needs: [build-images]
+    if: github.ref == 'refs/heads/develop' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_environment == 'development')
+    environment: development
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+    - name: Validate Google Cloud Authentication
+      run: |
+        echo "🔐 Validating Google Cloud Authentication for development observability..."
+        
+        if [ -n "$GOOGLE_APPLICATION_CREDENTIALS" ] && [ -f "$GOOGLE_APPLICATION_CREDENTIALS" ]; then
+          echo "✅ Found credentials file: $GOOGLE_APPLICATION_CREDENTIALS"
+          gcloud auth activate-service-account --key-file="$GOOGLE_APPLICATION_CREDENTIALS"
+          gcloud config set project "${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}"
+        else
+          echo "❌ No credentials file found from auth action"
+          exit 1
+        fi
+
+    - name: Set up Google Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+      with:
+        project_id: ${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}
+
+    - name: Install gke-gcloud-auth-plugin
+      run: |
+        echo "📦 Installing gke-gcloud-auth-plugin..."
+        gcloud components install gke-gcloud-auth-plugin --quiet
+        echo "✅ gke-gcloud-auth-plugin installed successfully"
+
+    - name: Configure kubectl
+      run: |
+        echo "🔧 Configuring kubectl for GKE cluster..."
+        
+        CLUSTER_NAME="${{ secrets.GKE_CLUSTER_NAME || 'mis-cloud-native-gke' }}"
+        CLUSTER_LOCATION="${{ secrets.GCP_REGION || 'us-central1' }}"
+        PROJECT_ID="${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}"
+        
+        echo "  Cluster: $CLUSTER_NAME"
+        echo "  Location: $CLUSTER_LOCATION"
+        echo "  Project: $PROJECT_ID"
+        
+        gcloud container clusters get-credentials "$CLUSTER_NAME" \
+          --region "$CLUSTER_LOCATION" \
+          --project "$PROJECT_ID"
+
+    - name: Setup Helm
+      uses: azure/setup-helm@v3
+      with:
+        version: '3.12.0'
+
+    - name: Create observability namespace
+      run: |
+        kubectl create namespace observability-dev --dry-run=client -o yaml | kubectl apply -f -
+
+    - name: Clean up existing observability deployment (if needed)
+      run: |
+        # Check if observability-stack exists and remove if in wrong namespace
+        if helm list -n observability-dev | grep -q "observability-stack"; then
+          echo "Found existing observability-stack in observability-dev namespace"
+        elif helm list --all-namespaces | grep -q "observability-stack"; then
+          echo "Found observability-stack in different namespace, cleaning up..."
+          # Find and delete the release
+          EXISTING_NS=$(helm list --all-namespaces -o json | jq -r '.[] | select(.name=="observability-stack") | .namespace')
+          if [ "$EXISTING_NS" != "observability-dev" ] && [ "$EXISTING_NS" != "" ]; then
+            echo "Removing observability-stack from namespace: $EXISTING_NS"
+            helm uninstall observability-stack -n "$EXISTING_NS" || true
+            kubectl delete namespace "$EXISTING_NS" --ignore-not-found=true || true
+          fi
+        fi
+
+    - name: Deploy Observability Stack
+      run: |
+        # Deploy observability stack with proper namespace
+        helm upgrade --install observability-stack ./helm/observability-stack \
+          --namespace observability-dev \
+          --create-namespace \
+          --set global.environment=development \
+          --set prometheus.enabled=true \
+          --set grafana.enabled=true \
+          --set jaeger.enabled=true \
+          --set elk.enabled=true \
+          --wait --timeout=15m
+
+    - name: Verify observability deployment
+      run: |
+        echo "🔍 Checking observability components in development..."
+        kubectl get pods -n observability-dev || echo "No pods found yet"
+        kubectl get services -n observability-dev || echo "No services found yet"
+
+  # Job 4: Deploy Observability Stack (Production)
+  deploy-observability-production:
+    name: Deploy Observability Stack (Production)
+    runs-on: ubuntu-latest
+    needs: [build-images]
+    if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_environment == 'production')
+    environment: production
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+    - name: Validate Google Cloud Authentication
+      run: |
+        echo "🔐 Validating Google Cloud Authentication for production observability..."
+        
+        if [ -n "$GOOGLE_APPLICATION_CREDENTIALS" ] && [ -f "$GOOGLE_APPLICATION_CREDENTIALS" ]; then
+          echo "✅ Found credentials file: $GOOGLE_APPLICATION_CREDENTIALS"
+          gcloud auth activate-service-account --key-file="$GOOGLE_APPLICATION_CREDENTIALS"
+          gcloud config set project "${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}"
+        else
+          echo "❌ No credentials file found from auth action"
+          exit 1
+        fi
+
+    - name: Set up Google Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+      with:
+        project_id: ${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}
+
+    - name: Install gke-gcloud-auth-plugin
+      run: |
+        echo "📦 Installing gke-gcloud-auth-plugin..."
+        gcloud components install gke-gcloud-auth-plugin --quiet
+        echo "✅ gke-gcloud-auth-plugin installed successfully"
+
+    - name: Configure kubectl
+      run: |
+        echo "🔧 Configuring kubectl for GKE cluster..."
+        
+        CLUSTER_NAME="${{ secrets.GKE_CLUSTER_NAME || 'mis-cloud-native-gke' }}"
+        CLUSTER_LOCATION="${{ secrets.GCP_REGION || 'us-central1' }}"
+        PROJECT_ID="${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}"
+        
+        echo "  Cluster: $CLUSTER_NAME"
+        echo "  Location: $CLUSTER_LOCATION"
+        echo "  Project: $PROJECT_ID"
+        
+        gcloud container clusters get-credentials "$CLUSTER_NAME" \
+          --region "$CLUSTER_LOCATION" \
+          --project "$PROJECT_ID"
+
+    - name: Setup Helm
+      uses: azure/setup-helm@v3
+      with:
+        version: '3.12.0'
+
+    - name: Create observability namespace
+      run: |
+        kubectl create namespace observability-prod --dry-run=client -o yaml | kubectl apply -f -
+
+    - name: Clean up existing observability deployment (if needed)
+      run: |
+        # Check if observability-stack exists and remove if in wrong namespace
+        if helm list -n observability-prod | grep -q "observability-stack"; then
+          echo "Found existing observability-stack in observability-prod namespace"
+        elif helm list --all-namespaces | grep -q "observability-stack"; then
+          echo "Found observability-stack in different namespace, cleaning up..."
+          # Find and delete the release
+          EXISTING_NS=$(helm list --all-namespaces -o json | jq -r '.[] | select(.name=="observability-stack") | .namespace')
+          if [ "$EXISTING_NS" != "observability-prod" ] && [ "$EXISTING_NS" != "" ]; then
+            echo "Removing observability-stack from namespace: $EXISTING_NS"
+            helm uninstall observability-stack -n "$EXISTING_NS" || true
+            kubectl delete namespace "$EXISTING_NS" --ignore-not-found=true || true
+          fi
+        fi
+
+    - name: Deploy Observability Stack
+      run: |
+        # Deploy observability stack with proper namespace
+        helm upgrade --install observability-stack ./helm/observability-stack \
+          --namespace observability-prod \
+          --create-namespace \
+          --set global.environment=production \
+          --set prometheus.enabled=true \
+          --set grafana.enabled=true \
+          --set jaeger.enabled=true \
+          --set elk.enabled=true \
+          --wait --timeout=15m
+
+    - name: Verify observability deployment
+      run: |
+        echo "🔍 Checking observability components in production..."
+        kubectl get pods -n observability-prod
+        kubectl get services -n observability-prod
+
+  # Job 5: Deploy API Gateway (Development)
+  deploy-development:
+    name: Deploy API Gateway (Development)
+    runs-on: ubuntu-latest
+    needs: [build-images, deploy-observability-development]
     if: github.ref == 'refs/heads/develop' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_environment == 'development')
     environment: development
     env:
@@ -190,19 +390,6 @@ jobs:
       run: |
         kubectl create namespace ${{ env.NAMESPACE }} --dry-run=client -o yaml | kubectl apply -f -
 
-    - name: Deploy Observability Stack
-      run: |
-        # Deploy observability stack first with proper configuration
-        helm upgrade --install observability-stack ./helm/observability-stack \
-          --namespace ${{ env.NAMESPACE }} \
-          --create-namespace \
-          --set global.environment=development \
-          --set prometheus.enabled=true \
-          --set grafana.enabled=true \
-          --set jaeger.enabled=true \
-          --set elk.enabled=true \
-          --wait --timeout=15m
-
     - name: Create API Gateway secrets
       run: |
         # Create API Gateway secrets using environment variables
@@ -235,6 +422,7 @@ jobs:
           --set observability.grafana.enabled=true \
           --set observability.jaeger.enabled=true \
           --set observability.elk.enabled=true \
+          --set observability.namespace=observability-dev \
           --wait --timeout=15m
 
     - name: Verify deployment
@@ -242,21 +430,18 @@ jobs:
         # Wait for API Gateway deployment
         kubectl wait --for=condition=available --timeout=300s deployment/mis-cloud-native-api-gateway -n ${{ env.NAMESPACE }} || true
         
-        # Check observability components
-        kubectl get pods -n ${{ env.NAMESPACE }} -l app.kubernetes.io/component=observability || true
-        
         # Display service endpoints
-        echo "🎉 Deployment completed successfully!"
+        echo "🎉 Development deployment completed successfully!"
         echo "API Gateway service:"
         kubectl get service mis-cloud-native-api-gateway -n ${{ env.NAMESPACE }} || echo "Service not found"
         echo "Observability services:"
-        kubectl get services -n ${{ env.NAMESPACE }} -l app.kubernetes.io/component=observability || echo "No observability services found"
+        kubectl get services -n observability-dev || echo "No observability services found"
 
-  # Job 4: Deploy to Production
+  # Job 6: Deploy API Gateway (Production)
   deploy-production:
-    name: Deploy API Gateway with Observability (Production)
+    name: Deploy API Gateway (Production)
     runs-on: ubuntu-latest
-    needs: [build-images]
+    needs: [build-images, deploy-observability-production]
     if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_environment == 'production')
     environment: production
     env:
@@ -322,19 +507,6 @@ jobs:
       run: |
         kubectl create namespace ${{ env.NAMESPACE }} --dry-run=client -o yaml | kubectl apply -f -
 
-    - name: Deploy Observability Stack
-      run: |
-        # Deploy observability stack first with proper configuration
-        helm upgrade --install observability-stack ./helm/observability-stack \
-          --namespace ${{ env.NAMESPACE }} \
-          --create-namespace \
-          --set global.environment=production \
-          --set prometheus.enabled=true \
-          --set grafana.enabled=true \
-          --set jaeger.enabled=true \
-          --set elk.enabled=true \
-          --wait --timeout=15m
-
     - name: Create API Gateway secrets
       run: |
         # Create API Gateway secrets using environment variables
@@ -367,6 +539,7 @@ jobs:
           --set observability.grafana.enabled=true \
           --set observability.jaeger.enabled=true \
           --set observability.elk.enabled=true \
+          --set observability.namespace=observability-prod \
           --wait --timeout=15m
 
     - name: Verify deployment
@@ -374,22 +547,19 @@ jobs:
         # Wait for API Gateway deployment
         kubectl wait --for=condition=available --timeout=300s deployment/mis-cloud-native-api-gateway -n ${{ env.NAMESPACE }}
         
-        # Check observability components
-        kubectl get pods -n ${{ env.NAMESPACE }} -l app.kubernetes.io/component=observability
-        
         # Display service endpoints
         echo "🎉 Production deployment completed successfully!"
         echo "API Gateway service:"
         kubectl get service mis-cloud-native-api-gateway -n ${{ env.NAMESPACE }}
         echo "Observability services:"
-        kubectl get services -n ${{ env.NAMESPACE }} -l app.kubernetes.io/component=observability
+        kubectl get services -n observability-prod
 
     - name: Run production smoke tests
       run: |
         chmod +x scripts/smoke_test_a_service.sh
         SERVICE=api-gateway ./scripts/smoke_test_a_service.sh || echo "Smoke tests completed with warnings"
 
-  # Job 5: Smoke Tests (Commented out for testing)
+  # Job 7: Smoke Tests (Commented out for testing)
   # smoke-tests:
   #   name: Run Smoke Tests
   #   runs-on: ubuntu-latest
