@@ -195,8 +195,12 @@ jobs:
       run: |
         echo "🏗️ Deploying infrastructure..."
         terraform init
-        terraform plan -var="environment=${{ env.ENVIRONMENT }}"
-        terraform apply -auto-approve -var="environment=${{ env.ENVIRONMENT }}"
+        terraform plan \
+          -var="gcp_project_id=${{ env.GCP_PROJECT_ID }}" \
+          -var="environment=${{ env.ENVIRONMENT }}"
+        terraform apply -auto-approve \
+          -var="gcp_project_id=${{ env.GCP_PROJECT_ID }}" \
+          -var="environment=${{ env.ENVIRONMENT }}"
         echo "✅ Infrastructure deployment complete"
 
     - name: Infrastructure (Test Mode)
