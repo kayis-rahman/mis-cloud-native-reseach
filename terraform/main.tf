@@ -62,12 +62,20 @@ resource "google_service_account" "gke_node_service_account" {
 resource "google_service_account_iam_member" "gke_default_compute_service_account_user" {
   service_account_id = "projects/${var.gcp_project_id}/serviceAccounts/${data.google_project.current.number}-compute@developer.gserviceaccount.com"
   role               = "roles/iam.serviceAccountUser"
-  # Ensure proper service account format - add serviceAccount: prefix if not present
+  # Properly handle both service account and user authentication
   member = var.terraform_service_account != "" ? (
+    # Explicit service account variable provided
+    endswith(var.terraform_service_account, ".iam.gserviceaccount.com") ?
+    "serviceAccount:${var.terraform_service_account}" :
     startswith(var.terraform_service_account, "serviceAccount:") ?
     var.terraform_service_account :
     "serviceAccount:${var.terraform_service_account}"
-  ) : "user:${data.google_client_openid_userinfo.me.email}"
+  ) : (
+    # Check if the authenticated identity is a service account
+    endswith(data.google_client_openid_userinfo.me.email, ".iam.gserviceaccount.com") ?
+    "serviceAccount:${data.google_client_openid_userinfo.me.email}" :
+    "user:${data.google_client_openid_userinfo.me.email}"
+  )
 }
 
 # Data sources to get current project and user info
