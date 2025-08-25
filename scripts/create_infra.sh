@@ -17,6 +17,24 @@ fi
 echo "[INFO] Initializing Terraform"
 terraform init -input=false
 
+echo "[INFO] Checking for existing conflicting firewall rules..."
+# Clean up any existing firewall rules that might conflict with our Terraform-managed ones
+EXISTING_RULES=$(gcloud compute firewall-rules list \
+  --filter="network:${TF_VAR_gcp_project_id}/global/networks/mis-cloud-native-vpc" \
+  --format="value(name)" 2>/dev/null || echo "")
+
+if [[ -n "$EXISTING_RULES" ]]; then
+  echo "[INFO] Found existing firewall rules that need to be removed:"
+  echo "$EXISTING_RULES"
+
+  for rule in $EXISTING_RULES; do
+    echo "[INFO] Removing conflicting firewall rule: $rule"
+    gcloud compute firewall-rules delete "$rule" --quiet || echo "[WARN] Failed to delete $rule or it doesn't exist"
+  done
+else
+  echo "[INFO] No conflicting firewall rules found"
+fi
+
 echo "[INFO] Applying base infra (APIs, network, GKE). This may take several minutes..."
 terraform apply -auto-approve \
   -target=google_project_service.services \
