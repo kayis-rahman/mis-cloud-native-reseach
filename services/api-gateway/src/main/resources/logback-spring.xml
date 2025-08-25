@@ -2,92 +2,161 @@
 <configuration>
     <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
 
-    <!-- Console Appender with JSON format -->
-    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
-            <providers>
-                <timestamp/>
-                <logLevel/>
-                <loggerName/>
-                <message/>
-                <mdc/>
-                <arguments/>
-                <stackTrace/>
-                <pattern>
+    <!-- Console Appender for Development -->
+    <springProfile name="development">
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+            </encoder>
+        </appender>
+
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+
+        <logger name="com.sparkage" level="DEBUG"/>
+        <logger name="org.springframework.cloud.gateway" level="DEBUG"/>
+        <logger name="org.springframework.web" level="DEBUG"/>
+        <logger name="reactor.netty" level="DEBUG"/>
+    </springProfile>
+
+    <!-- Console and File Appender for Staging -->
+    <springProfile name="staging">
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+            </encoder>
+        </appender>
+
+        <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>logs/api-gateway.log</file>
+            <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+                <fileNamePattern>logs/api-gateway.%d{yyyy-MM-dd}.gz</fileNamePattern>
+                <maxHistory>7</maxHistory>
+                <totalSizeCap>1GB</totalSizeCap>
+            </rollingPolicy>
+            <encoder>
+                <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+            </encoder>
+        </appender>
+
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="FILE"/>
+        </root>
+
+        <logger name="com.sparkage" level="INFO"/>
+        <logger name="org.springframework.cloud.gateway" level="INFO"/>
+        <logger name="org.springframework.web" level="WARN"/>
+    </springProfile>
+
+    <!-- JSON Structured Logging for Production -->
+    <springProfile name="production">
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+                <providers>
+                    <timestamp/>
+                    <logLevel/>
+                    <loggerName/>
+                    <message/>
+                    <mdc/>
+                    <arguments/>
+                    <stackTrace/>
                     <pattern>
-                        {
-                            "service": "api-gateway",
-                            "traceId": "%X{traceId:-}",
-                            "spanId": "%X{spanId:-}"
-                        }
+                        <pattern>
+                            {
+                                "service": "api-gateway",
+                                "traceId": "%X{traceId:-}",
+                                "spanId": "%X{spanId:-}"
+                            }
+                        </pattern>
                     </pattern>
-                </pattern>
-            </providers>
-        </encoder>
-    </appender>
+                </providers>
+            </encoder>
+        </appender>
 
-    <!-- File Appender with JSON format -->
-    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>/var/log/api-gateway.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>/var/log/api-gateway.%d{yyyy-MM-dd}.gz</fileNamePattern>
-            <maxHistory>30</maxHistory>
-        </rollingPolicy>
-        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
-            <providers>
-                <timestamp/>
-                <logLevel/>
-                <loggerName/>
-                <message/>
-                <mdc/>
-                <arguments/>
-                <stackTrace/>
-                <pattern>
+        <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>logs/api-gateway.log</file>
+            <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+                <fileNamePattern>logs/api-gateway.%d{yyyy-MM-dd}.gz</fileNamePattern>
+                <maxHistory>30</maxHistory>
+                <totalSizeCap>5GB</totalSizeCap>
+            </rollingPolicy>
+            <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+                <providers>
+                    <timestamp/>
+                    <logLevel/>
+                    <loggerName/>
+                    <message/>
+                    <mdc/>
+                    <arguments/>
+                    <stackTrace/>
                     <pattern>
-                        {
-                            "service": "api-gateway",
-                            "traceId": "%X{traceId:-}",
-                            "spanId": "%X{spanId:-}"
-                        }
+                        <pattern>
+                            {
+                                "service": "api-gateway",
+                                "traceId": "%X{traceId:-}",
+                                "spanId": "%X{spanId:-}"
+                            }
+                        </pattern>
                     </pattern>
-                </pattern>
-            </providers>
-        </encoder>
-    </appender>
+                </providers>
+            </encoder>
+        </appender>
 
-    <!-- Logstash TCP Appender for ELK Stack -->
-    <appender name="LOGSTASH" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
-        <destination>logstash:5000</destination>
-        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
-            <providers>
-                <timestamp/>
-                <logLevel/>
-                <loggerName/>
-                <message/>
-                <mdc/>
-                <arguments/>
-                <stackTrace/>
-                <pattern>
+        <!-- Logstash TCP Appender for Production -->
+        <appender name="LOGSTASH" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
+            <destination>${LOGSTASH_HOST:-logstash-service.observability.svc.cluster.local}:${LOGSTASH_PORT:-5000}</destination>
+            <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+                <providers>
+                    <timestamp/>
+                    <logLevel/>
+                    <loggerName/>
+                    <message/>
+                    <mdc/>
+                    <arguments/>
+                    <stackTrace/>
                     <pattern>
-                        {
-                            "service": "api-gateway",
-                            "environment": "${ENV:-development}",
-                            "traceId": "%X{traceId:-}",
-                            "spanId": "%X{spanId:-}"
-                        }
+                        <pattern>
+                            {
+                                "service": "api-gateway",
+                                "environment": "${ENV:-production}",
+                                "traceId": "%X{traceId:-}",
+                                "spanId": "%X{spanId:-}"
+                            }
+                        </pattern>
                     </pattern>
-                </pattern>
-            </providers>
-        </encoder>
-    </appender>
+                </providers>
+            </encoder>
+        </appender>
 
-    <root level="INFO">
-        <appender-ref ref="CONSOLE"/>
-        <appender-ref ref="FILE"/>
-        <appender-ref ref="LOGSTASH"/>
-    </root>
+        <root level="WARN">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="FILE"/>
+            <appender-ref ref="LOGSTASH"/>
+        </root>
 
-    <logger name="com.sparkage" level="DEBUG"/>
-    <logger name="org.springframework.cloud.gateway" level="DEBUG"/>
+        <logger name="com.sparkage" level="INFO"/>
+        <logger name="org.springframework.cloud.gateway" level="INFO"/>
+        <logger name="org.springframework.security" level="WARN"/>
+        <logger name="org.springframework.web" level="WARN"/>
+    </springProfile>
+
+    <!-- Test Profile -->
+    <springProfile name="test">
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+            </encoder>
+        </appender>
+
+        <root level="WARN">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+
+        <logger name="com.sparkage" level="DEBUG"/>
+        <logger name="org.springframework.test" level="INFO"/>
+        <logger name="org.springframework.cloud.gateway" level="DEBUG"/>
+    </springProfile>
+
 </configuration>
-

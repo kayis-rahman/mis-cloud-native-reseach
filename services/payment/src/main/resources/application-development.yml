@@ -1,0 +1,39 @@
+# Development Profile - Local development without observability
+spring:
+  application:
+    name: payment-service
+  datasource:
+    url: jdbc:postgresql://localhost:5436/paymentdb
+    username: payment
+    password: payment
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 2
+      minimum-idle: 1
+      idle-timeout: 60000
+      connection-timeout: 30000
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    show-sql: true
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+
+# No observability for development
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      enabled: true
+      show-details: always
+
+# Simple console logging
+logging:
+  level:
+    com.sparkage: DEBUG
+    org.hibernate.SQL: DEBUG
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

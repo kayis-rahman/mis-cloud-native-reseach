@@ -1,14 +1,53 @@
 global:
   imagePullPolicy: IfNotPresent
   imageRegistry: "ghcr.io"
+  # Environment configuration - will be overridden by Helm during deployment
+  environment: "development"  # Can be: development, staging, production
+  # GCP Configuration
+  gcp:
+    projectId: ""  # Will be set via GitHub Actions
+    region: "us-central1"
+    cluster:
+      name: ""  # Will be set via GitHub Actions
+      zone: "us-central1-a"
   # Ingress global control
   ingress:
-    enabled: false
-    className: ""
+    enabled: true
+    className: "gce"
     hosts: []
     tls: []
     # If true, expose api-gateway at root path "/" instead of "/api-gateway"
     gatewayRoot: false
+
+# Environment-specific overrides
+environments:
+  development:
+    replicaCount: 1
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
+      limits:
+        memory: "512Mi"
+        cpu: "200m"
+  staging:
+    replicaCount: 1
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "250m"
+      limits:
+        memory: "1Gi"
+        cpu: "500m"
+  production:
+    replicaCount: 1
+    resources:
+      requests:
+        memory: "1Gi"
+        cpu: "500m"
+      limits:
+        memory: "2Gi"
+        cpu: "1000m"
 
 # Observability configuration
 observability:
@@ -25,8 +64,6 @@ observability:
   jaeger:
     enabled: true
     namespace: observability
-  # Enable observability profile for all services
-  profileActive: true
 
 # Define microservices here
 services:
@@ -40,20 +77,47 @@ services:
     service:
       type: ClusterIP
       port: 8080
-    resources: {}
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "250m"
+      limits:
+        memory: "1Gi"
+        cpu: "500m"
+    # API Gateway specific configurations
     security:
-      apiKeys: "default-key-please-change"
+      apiKeys: "gateway-key-please-change-in-production"
+      headerName: "X-API-Key"
+    rateLimit:
+      replenishRate: 10
+      burstCapacity: 20
     env:
+      # Use environment-specific profile
       - name: SPRING_PROFILES_ACTIVE
-        value: "observability"
+        value: "{{ .Values.global.environment }}"
+      - name: SECURITY_API_KEYS
+        valueFrom:
+          secretRef:
+            name: api-gateway-secrets
+            key: api-keys
+      - name: SECURITY_HEADER_NAME
+        value: "{{ .Values.services.api-gateway.security.headerName }}"
+      - name: RATELIMIT_REPLENISH_RATE
+        value: "{{ .Values.services.api-gateway.rateLimit.replenishRate }}"
+      - name: RATELIMIT_BURST_CAPACITY
+        value: "{{ .Values.services.api-gateway.rateLimit.burstCapacity }}"
     livenessProbe:
+      path: /actuator/health
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+    readinessProbe:
       path: /actuator/health
       initialDelaySeconds: 20
       periodSeconds: 10
-    readinessProbe:
-      path: /actuator/health
-      initialDelaySeconds: 10
-      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
     # Observability annotations
     annotations:
       prometheus.io/scrape: "true"
@@ -65,15 +129,21 @@ services:
     name: identity-service
     image: "identity:latest"
     replicaCount: 1
-    containerPort: 9000
+    containerPort: 8085
     usesDb: true
     service:
       type: ClusterIP
-      port: 9000
-    resources: {}
+      port: 8085
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "200m"
+      limits:
+        memory: "512Mi"
+        cpu: "400m"
     env:
       - name: SPRING_PROFILES_ACTIVE
-        value: "observability"
+        value: "{{ .Values.global.environment }}"
     livenessProbe:
       path: /actuator/health/liveness
       initialDelaySeconds: 30
@@ -85,22 +155,28 @@ services:
     annotations:
       prometheus.io/scrape: "true"
       prometheus.io/path: "/actuator/prometheus"
-      prometheus.io/port: "9000"
+      prometheus.io/port: "8085"
 
   product:
     enabled: true
     name: product-service
     image: "product:latest"
     replicaCount: 1
-    containerPort: 9001
+    containerPort: 8081
     usesDb: true
     service:
       type: ClusterIP
-      port: 9001
-    resources: {}
+      port: 8081
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "200m"
+      limits:
+        memory: "512Mi"
+        cpu: "400m"
     env:
       - name: SPRING_PROFILES_ACTIVE
-        value: "observability"
+        value: "{{ .Values.global.environment }}"
     livenessProbe:
       path: /actuator/health/liveness
       initialDelaySeconds: 20
@@ -112,22 +188,28 @@ services:
     annotations:
       prometheus.io/scrape: "true"
       prometheus.io/path: "/actuator/prometheus"
-      prometheus.io/port: "9001"
+      prometheus.io/port: "8081"
 
   cart:
     enabled: true
     name: cart-service
     image: "cart:latest"
     replicaCount: 1
-    containerPort: 9002
+    containerPort: 8083
     usesDb: true
     service:
       type: ClusterIP
-      port: 9002
-    resources: {}
+      port: 8083
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "200m"
+      limits:
+        memory: "512Mi"
+        cpu: "400m"
     env:
       - name: SPRING_PROFILES_ACTIVE
-        value: "observability"
+        value: "{{ .Values.global.environment }}"
     livenessProbe:
       path: /actuator/health/liveness
       initialDelaySeconds: 20
@@ -139,22 +221,28 @@ services:
     annotations:
       prometheus.io/scrape: "true"
       prometheus.io/path: "/actuator/prometheus"
-      prometheus.io/port: "9002"
+      prometheus.io/port: "8083"
 
   order:
     enabled: true
     name: order-service
     image: "order:latest"
     replicaCount: 1
-    containerPort: 9003
+    containerPort: 8082
     usesDb: true
     service:
       type: ClusterIP
-      port: 9003
-    resources: {}
+      port: 8082
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "200m"
+      limits:
+        memory: "512Mi"
+        cpu: "400m"
     env:
       - name: SPRING_PROFILES_ACTIVE
-        value: "observability"
+        value: "{{ .Values.global.environment }}"
     livenessProbe:
       path: /actuator/health/liveness
       initialDelaySeconds: 20
@@ -166,22 +254,28 @@ services:
     annotations:
       prometheus.io/scrape: "true"
       prometheus.io/path: "/actuator/prometheus"
-      prometheus.io/port: "9003"
+      prometheus.io/port: "8082"
 
   payment:
     enabled: true
     name: payment-service
     image: "payment:latest"
     replicaCount: 1
-    containerPort: 9004
+    containerPort: 8084
     usesDb: true
     service:
       type: ClusterIP
-      port: 9004
-    resources: {}
+      port: 8084
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "200m"
+      limits:
+        memory: "512Mi"
+        cpu: "400m"
     env:
       - name: SPRING_PROFILES_ACTIVE
-        value: "observability"
+        value: "{{ .Values.global.environment }}"
     livenessProbe:
       path: /actuator/health/liveness
       initialDelaySeconds: 20
@@ -193,4 +287,4 @@ services:
     annotations:
       prometheus.io/scrape: "true"
       prometheus.io/path: "/actuator/prometheus"
-      prometheus.io/port: "9004"
+      prometheus.io/port: "8084"

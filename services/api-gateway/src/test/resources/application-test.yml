@@ -1,4 +1,6 @@
 spring:
+  application:
+    name: api-gateway-test
   cloud:
     gateway:
       # Enable gateway for integration tests
@@ -45,10 +47,51 @@ spring:
   main:
     web-application-type: reactive
 
+# Observability configuration for tests
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+    metrics:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: ${spring.application.name}
+      service: api-gateway
+      environment: test
+    web:
+      server:
+        request:
+          autotime:
+            enabled: true
+
+# Simplified logging configuration for tests - console only
+logging:
+  level:
+    com.sparkage: INFO
+    org.springframework.cloud.gateway: INFO
+    org.springframework.test: WARN
+    org.springframework.web: WARN
+    net.logstash.logback: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+  # Disable file logging for tests
+  file:
+    name: ""
+
 # Override security settings for tests
 security:
   api-keys: test-key
   header-name: X-API-Key
-  allowlist-paths:
-    - /actuator/health
-    - /actuator/info
+
+# Disable external dependencies for tests
+opentracing:
+  jaeger:
+    enabled: false

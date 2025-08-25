@@ -1,0 +1,63 @@
+# Production Profile - Full observability with metrics, tracing, and logging
+spring:
+  application:
+    name: identity-service
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://postgres-service:5432/identitydb}
+    username: ${DB_USERNAME:identity_user}
+    password: ${DB_PASSWORD:identity_pass}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      idle-timeout: 600000
+      connection-timeout: 30000
+      leak-detection-threshold: 60000
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    show-sql: false
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+
+# Full observability for production
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      enabled: true
+      show-details: always
+    metrics:
+      enabled: true
+    prometheus:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      percentiles:
+        http.server.requests: 0.5, 0.95, 0.99
+
+# OpenTracing Jaeger Configuration for Production
+opentracing:
+  jaeger:
+    service-name: ${SPRING_APPLICATION_NAME:identity-service}
+    sampler-type: ${JAEGER_SAMPLER_TYPE:const}
+    sampler-param: ${JAEGER_SAMPLER_PARAM:1}
+    log-spans: false
+    enable-b3-propagation: true
+    udp-sender:
+      host: ${JAEGER_AGENT_HOST:jaeger-agent-service.observability.svc.cluster.local}
+      port: ${JAEGER_AGENT_PORT:6831}
+
+# Structured JSON logging for production
+logging:
+  level:
+    com.sparkage: INFO
+    org.springframework.security: WARN

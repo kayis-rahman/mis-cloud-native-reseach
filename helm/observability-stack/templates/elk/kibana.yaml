@@ -1,0 +1,90 @@
+{{- if .Values.kibana.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kibana
+  namespace: {{ include "observability-stack.namespace" . }}
+  labels:
+    {{- include "observability-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: kibana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "observability-stack.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: kibana
+  template:
+    metadata:
+      labels:
+        {{- include "observability-stack.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: kibana
+    spec:
+      containers:
+      - name: kibana
+        image: "{{ .Values.kibana.image.repository }}:{{ .Values.kibana.image.tag }}"
+        imagePullPolicy: {{ .Values.kibana.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.kibana.service.targetPort }}
+          name: http
+        env:
+        - name: ELASTICSEARCH_HOSTS
+          value: "http://elasticsearch-service:9200"
+        - name: ELASTICSEARCH_USERNAME
+          value: "elastic"
+        - name: ELASTICSEARCH_PASSWORD
+          value: ""
+        - name: XPACK_SECURITY_ENABLED
+          value: "false"
+        - name: XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY
+          value: "something_at_least_32_characters_long"
+        resources:
+          {{- toYaml .Values.kibana.resources | nindent 10 }}
+        readinessProbe:
+          httpGet:
+            path: /api/status
+            port: http
+          initialDelaySeconds: 60
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /api/status
+            port: http
+          initialDelaySeconds: 60
+          periodSeconds: 10
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kibana-service
+  namespace: {{ include "observability-stack.namespace" . }}
+  labels:
+    {{- include "observability-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: kibana
+  {{- with .Values.kibana.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.kibana.service.type }}
+  ports:
+  - port: {{ .Values.kibana.service.port }}
+    targetPort: {{ .Values.kibana.service.targetPort }}
+    protocol: TCP
+    name: http
+  selector:
+    {{- include "observability-stack.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: kibana
+{{- end }}
+

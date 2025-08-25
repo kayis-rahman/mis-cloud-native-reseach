@@ -1,0 +1,84 @@
+# Development Environment Values - Minimal Resources
+global:
+  environment: "development"
+  imagePullPolicy: IfNotPresent
+  imageRegistry: "ghcr.io"
+  gcp:
+    projectId: ""  # Will be set via GitHub Actions
+    region: "us-central1"
+    cluster:
+      name: ""  # Will be set via GitHub Actions
+  ingress:
+    enabled: false  # Disabled for minimal setup
+
+# Minimal resources for development
+services:
+  api-gateway:
+    replicaCount: 1
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "50m"
+      limits:
+        memory: "256Mi"
+        cpu: "100m"
+    security:
+      apiKeys: "dev-gateway-key-12345"
+      headerName: "X-API-Key"
+    rateLimit:
+      replenishRate: 100  # Higher for development testing
+      burstCapacity: 200
+
+  identity:
+    replicaCount: 1
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "25m"
+      limits:
+        memory: "128Mi"
+        cpu: "50m"
+
+  product:
+    replicaCount: 1
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "25m"
+      limits:
+        memory: "128Mi"
+        cpu: "50m"
+
+  cart:
+    replicaCount: 1
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "25m"
+      limits:
+        memory: "128Mi"
+        cpu: "50m"
+
+  order:
+    replicaCount: 1
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "25m"
+      limits:
+        memory: "128Mi"
+        cpu: "50m"
+
+  payment:
+    replicaCount: 1
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "25m"
+      limits:
+        memory: "128Mi"
+        cpu: "50m"
+
+# Minimal observability for development
+observability:
+  enabled: false  # Disabled for minimal setup

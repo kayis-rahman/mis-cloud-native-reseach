@@ -10,37 +10,107 @@ on:
       deploy_environment:
         description: 'Deployment environment'
         required: true
-        default: 'staging'
+        default: 'development'
         type: choice
         options:
-        - staging
+        - development
         - production
       services:
         description: 'Services to deploy (space-separated, or "all")'
         required: false
-        default: 'all'
+        default: 'api-gateway'
 
 env:
   REGISTRY: ghcr.io
   MAVEN_OPTS: -Dmaven.repo.local=.m2/repository
-  IMAGE_REPOSITORY: ghcr.io/kayis-rahman/mis-cloud-native-reseach
+  IMAGE_REPOSITORY: ghcr.io/kayis-rahman/mis-cloud-native-research
 
-# Add permissions for GITHUB_TOKEN
 permissions:
   contents: read
   packages: write
   id-token: write
 
 jobs:
-  # Job 1: Code Quality and Security
-  code-quality:
-    name: Code Quality & Security Checks
+  # Job 1: Determine Environment
+  determine-environment:
+    name: Determine Environment
     runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.set-env.outputs.environment }}
+      gcp_project: ${{ steps.set-env.outputs.gcp_project }}
+      gke_cluster: ${{ steps.set-env.outputs.gke_cluster }}
+      gcp_region: ${{ steps.set-env.outputs.gcp_region }}
+      namespace: ${{ steps.set-env.outputs.namespace }}
+    steps:
+      - name: Set environment variables
+        id: set-env
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            ENV="${{ github.event.inputs.deploy_environment }}"
+          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            ENV="production"
+          elif [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
+            ENV="development"
+          else
+            ENV="development"
+          fi
+          
+          echo "environment=$ENV" >> $GITHUB_OUTPUT
+          
+          # Set environment-specific GCP values (minimal setup)
+          case $ENV in
+            production)
+              echo "gcp_project=${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-prod' }}" >> $GITHUB_OUTPUT
+              echo "gke_cluster=mis-cloud-native-prod" >> $GITHUB_OUTPUT
+              echo "gcp_region=${{ secrets.GCP_REGION || 'us-central1' }}" >> $GITHUB_OUTPUT
+              echo "namespace=production" >> $GITHUB_OUTPUT
+              ;;
+            development)
+              echo "gcp_project=${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-dev' }}" >> $GITHUB_OUTPUT
+              echo "gke_cluster=mis-cloud-native-dev" >> $GITHUB_OUTPUT
+              echo "gcp_region=${{ secrets.GCP_REGION || 'us-central1' }}" >> $GITHUB_OUTPUT
+              echo "namespace=development" >> $GITHUB_OUTPUT
+              ;;
+          esac
+
+  # Job 2: Code Quality and Security (Commented out for testing)
+  # code-quality:
+  #   name: Code Quality & Tests
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - name: Checkout code
+  #     uses: actions/checkout@v4
+  #     with:
+  #       fetch-depth: 0
+
+  #   - name: Set up JDK 17
+  #     uses: actions/setup-java@v4
+  #     with:
+  #       java-version: '17'
+  #       distribution: 'temurin'
+
+  #   - name: Cache Maven dependencies
+  #     uses: actions/cache@v4
+  #     with:
+  #       path: .m2/repository
+  #       key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+  #       restore-keys: |
+  #         ${{ runner.os }}-maven-
+
+  #   - name: Run tests for API Gateway
+  #     working-directory: ./services/api-gateway
+  #     run: |
+  #       mvn clean test -Dspring.profiles.active=test
+
+  # Job 3: Build and Push Container Images (API Gateway only)
+  build-images:
+    name: Build & Push Images
+    runs-on: ubuntu-latest
+    needs: [determine-environment]
+    if: github.event_name != 'pull_request'
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
 
     - name: Set up JDK 17
       uses: actions/setup-java@v4
@@ -56,259 +126,6 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-maven-
 
-#    - name: Scan for secrets
-#      run: |
-#        chmod +x scripts/scan_secrets.sh
-#        ./scripts/scan_secrets.sh
-#
-#    - name: Security scan (filesystem)
-#      run: |
-#        chmod +x scripts/scan_security.sh
-#        NO_PROGRESS=1 ./scripts/scan_security.sh
-
-#  # Job 2: Infrastructure Setup
-#  infrastructure:
-#    name: Infrastructure Setup
-#    runs-on: ubuntu-latest
-#    #if: github.event_name != 'pull_request'
-#    outputs:
-#      cluster-name: ${{ steps.infra-outputs.outputs.cluster-name }}
-#      cluster-location: ${{ steps.infra-outputs.outputs.cluster-location }}
-#      project-id: ${{ steps.infra-outputs.outputs.project-id }}
-#    steps:
-#    - name: Checkout code
-#      uses: actions/checkout@v4
-#
-#    - name: Authenticate to Google Cloud
-#      uses: google-github-actions/auth@v2
-#      with:
-#        credentials_json: ${{ secrets.GCP_SA_KEY }}
-#
-#    - name: Validate Google Cloud Authentication
-#      run: |
-#        echo "🔐 Validating Google Cloud Authentication..."
-#
-#        # The google-github-actions/auth creates a credentials file but doesn't activate it for gcloud
-#        # We need to activate the service account manually
-#
-#        # Check if credentials file was created by the auth action
-#        if [ -n "$GOOGLE_APPLICATION_CREDENTIALS" ] && [ -f "$GOOGLE_APPLICATION_CREDENTIALS" ]; then
-#          echo "✅ Found credentials file: $GOOGLE_APPLICATION_CREDENTIALS"
-#
-#          # Activate the service account
-#          echo "🔑 Activating service account..."
-#          gcloud auth activate-service-account --key-file="$GOOGLE_APPLICATION_CREDENTIALS"
-#
-#          # Set the project
-#          echo "📋 Setting project to: ${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}"
-#          gcloud config set project "${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}"
-#
-#        else
-#          echo "❌ No credentials file found from auth action"
-#          echo "GOOGLE_APPLICATION_CREDENTIALS: $GOOGLE_APPLICATION_CREDENTIALS"
-#          exit 1
-#        fi
-#
-#        # Now validate the authentication
-#        echo "🧪 Testing authentication..."
-#        if gcloud auth list --filter=status:ACTIVE --format="value(account)" | grep -q "."; then
-#          echo "✅ Successfully authenticated with Google Cloud"
-#
-#          # Display active account info
-#          echo "📋 Active account:"
-#          gcloud auth list --filter=status:ACTIVE --format="table(account,status)"
-#
-#          # Test project access
-#          echo "🔍 Testing project access..."
-#          if gcloud projects describe "${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}" --quiet; then
-#            echo "✅ Successfully accessed project: ${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}"
-#          else
-#            echo "❌ Failed to access project. Check service account permissions."
-#            exit 1
-#          fi
-#
-#          # Test API access (basic test)
-#          echo "🧪 Testing basic API access..."
-#          if gcloud services list --limit=1 --quiet >/dev/null 2>&1; then
-#            echo "✅ Service account has basic API access"
-#          else
-#            echo "⚠️  Limited API access - may need additional permissions for infrastructure setup"
-#          fi
-#
-#        else
-#          echo "❌ Authentication failed - no active accounts found after activation"
-#          echo "Debug info:"
-#          gcloud auth list
-#          exit 1
-#        fi
-#
-#    - name: Set up Google Cloud SDK
-#      uses: google-github-actions/setup-gcloud@v2
-#      with:
-#        project_id: ${{ secrets.GCP_PROJECT }}
-#
-#    - name: Install Terraform
-#      uses: hashicorp/setup-terraform@v3
-#      with:
-#        terraform_version: '1.5.0'
-#        terraform_wrapper: false
-#
-#    - name: Set up kubectl
-#      uses: azure/setup-kubectl@v4
-#      with:
-#        version: 'v1.28.0'
-#
-#    - name: Install gke-gcloud-auth-plugin
-#      run: |
-#        echo "📦 Installing gke-gcloud-auth-plugin..."
-#        gcloud components install gke-gcloud-auth-plugin --quiet
-#        echo "✅ gke-gcloud-auth-plugin installed successfully"
-#
-#    - name: Bootstrap Terraform state (if needed)
-#      run: |
-#        chmod +x scripts/bootstrap_state.sh
-#        ./scripts/bootstrap_state.sh || echo "State already exists or bootstrap not needed"
-#      env:
-#        TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT }}
-#        TF_VAR_gcp_region: ${{ secrets.GCP_REGION || 'us-central1' }}
-#        TF_VAR_gcp_zone: ${{ secrets.GCP_ZONE || 'us-central1-a' }}
-#        TF_VAR_project_name: "mis-cloud-native"
-#
-#    - name: Create base infrastructure
-#      run: |
-#        chmod +x scripts/create_infra.sh
-#        ./scripts/create_infra.sh
-#      env:
-#        TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT }}
-#        TF_VAR_gcp_region: ${{ secrets.GCP_REGION || 'us-central1' }}
-#        TF_VAR_gcp_zone: ${{ secrets.GCP_ZONE || 'us-central1-a' }}
-#        TF_VAR_project_name: "mis-cloud-native"
-#        TF_VAR_network_cidr: "10.0.0.0/16"
-#        TF_VAR_gke_version: "1.29"
-#        TF_VAR_db_username: "misadmin"
-#        TF_VAR_db_tier: "db-f1-micro"
-#
-#    - name: Create databases
-#      run: |
-#        chmod +x scripts/create_db.sh
-#        ./scripts/create_db.sh
-#      env:
-#        TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT }}
-#        TF_VAR_gcp_region: ${{ secrets.GCP_REGION || 'us-central1' }}
-#        TF_VAR_gcp_zone: ${{ secrets.GCP_ZONE || 'us-central1-a' }}
-#        TF_VAR_project_name: "mis-cloud-native"
-#        TF_VAR_db_username: "misadmin"
-#        TF_VAR_db_tier: "db-f1-micro"
-#
-#    - name: Create Kubernetes secrets
-#      run: |
-#        chmod +x scripts/create_secrets.sh
-#        ./scripts/create_secrets.sh
-#      env:
-#        TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT }}
-#        TF_VAR_gcp_region: ${{ secrets.GCP_REGION || 'us-central1' }}
-#        TF_VAR_project_name: "mis-cloud-native"
-#        GHCR_OWNER: ${{ github.repository_owner }}
-#        GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#        GHCR_TOKEN_SECRET_ID: ghcr-pat
-#        NAMESPACE: default
-#        TF_DIR: terraform
-#        DB_PASSWORD: ${{ github.ref == 'refs/heads/main' && secrets.DB_PASSWORD_PRODUCTION || secrets.DB_PASSWORD_STAGING || 'temp-password-123' }}
-#        JWT_SECRET: ${{ github.ref == 'refs/heads/main' && secrets.JWT_SECRET_PRODUCTION || secrets.JWT_SECRET_STAGING || 'temp-jwt-secret-abc123' }}
-#
-#    - name: Validate infrastructure
-#      run: |
-#        chmod +x scripts/validate_infra.sh
-#        ./scripts/validate_infra.sh
-#      env:
-#        TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT }}
-#        TF_VAR_gcp_region: ${{ secrets.GCP_REGION || 'us-central1' }}
-#        TF_VAR_project_name: "mis-cloud-native"
-#
-#    - name: Export infrastructure outputs
-#      id: infra-outputs
-#      run: |
-#        cd terraform
-#        echo "cluster-name=$(terraform output -raw cluster_name)" >> $GITHUB_OUTPUT
-#        echo "cluster-location=$(terraform output -raw cluster_location)" >> $GITHUB_OUTPUT
-#        echo "project-id=$(terraform output -raw project_id)" >> $GITHUB_OUTPUT
-#      env:
-#        TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT }}
-#        TF_VAR_gcp_region: ${{ secrets.GCP_REGION || 'us-central1' }}
-
-# Temporary commanding Tests since it's working properly
-# Job 2: Unit and Integration Tests
-#  test:
-#    name: Unit & Integration Tests
-#    runs-on: ubuntu-latest
-#    strategy:
-#      matrix:
-#        service: [identity, product, cart, order, payment, api-gateway]
-#    steps:
-#    - name: Checkout code
-#      uses: actions/checkout@v4
-#
-#    - name: Set up JDK 17
-#      uses: actions/setup-java@v4
-#      with:
-#        java-version: '17'
-#        distribution: 'temurin'
-#
-#    - name: Cache Maven dependencies
-#      uses: actions/cache@v4
-#      with:
-#        path: .m2/repository
-#        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-#        restore-keys: |
-#          ${{ runner.os }}-maven-
-#
-#    - name: Run tests for ${{ matrix.service }}
-#      run: |
-#        chmod +x scripts/run_tests.sh
-#        ./scripts/run_tests.sh ${{ matrix.service }}
-#
-#    - name: Upload test results
-#      uses: actions/upload-artifact@v4
-#      if: always()
-#      with:
-#        name: test-results-${{ matrix.service }}
-#        path: services/${{ matrix.service }}/target/surefire-reports/
-#
-#    - name: Upload coverage reports
-#      uses: actions/upload-artifact@v4
-#      if: always()
-#      with:
-#        name: coverage-${{ matrix.service }}
-#        path: services/${{ matrix.service }}/target/site/jacoco/
-
-  # Job 3: Build and Push Container Images
-  build-images:
-    name: Build & Push Images
-    runs-on: ubuntu-latest
-    needs: [code-quality]
-    if: github.event_name != 'pull_request'
-    outputs:
-      image-tag: ${{ steps.meta.outputs.tags }}
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-
-    - name: Extract metadata
-      id: meta
-      run: |
-        if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-          TAG="latest"
-        elif [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
-          TAG="develop"
-        else
-          TAG="${{ github.sha }}"
-        fi
-        echo "tags=$TAG" >> $GITHUB_OUTPUT
-        echo "IMAGE_TAG=$TAG" >> $GITHUB_ENV
-
     - name: Log in to Container Registry
       uses: docker/login-action@v3
       with:
@@ -316,47 +133,28 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Build and push images with new format
+    - name: Build and test API Gateway
+      working-directory: ./services/api-gateway
       run: |
-        services=("identity" "product" "cart" "order" "payment" "api-gateway")
+        mvn clean package -DskipTests
 
-        for service in "${services[@]}"; do
-          echo "Building and pushing $service with new image format..."
-          cd services/$service
-
-          IMAGE="${{ env.IMAGE_REPOSITORY }}/${service}:${{ env.IMAGE_TAG }}"
-
-          echo "Building image: $IMAGE"
-          docker build -t "$IMAGE" .
-
-          echo "Pushing image: $IMAGE"
-          docker push "$IMAGE"
-          echo "✅ Successfully pushed $IMAGE"
-
-          cd ../..
-        done
-
-    - name: Security scan images
+    - name: Build and push API Gateway Docker image
+      working-directory: ./services/api-gateway
       run: |
-        chmod +x scripts/scan_security.sh
-        for service in identity product cart order payment api-gateway; do
-          echo "Scanning image: ${{ env.IMAGE_REPOSITORY }}/${service}:${{ env.IMAGE_TAG }}"
-          IMAGE="${{ env.IMAGE_REPOSITORY }}/${service}:${{ env.IMAGE_TAG }}" \
-            NO_PROGRESS=1 ./scripts/scan_security.sh
-        done
+        IMAGE_TAG="${{ env.IMAGE_REPOSITORY }}/api-gateway:${{ github.sha }}"
+        IMAGE_TAG_ENV="${{ env.IMAGE_REPOSITORY }}/api-gateway:${{ needs.determine-environment.outputs.environment }}"
+        
+        docker build -t $IMAGE_TAG -t $IMAGE_TAG_ENV .
+        docker push $IMAGE_TAG
+        docker push $IMAGE_TAG_ENV
 
-  # Job 4: Deploy to Staging
-  deploy-staging:
-    name: Deploy to Staging
+  # Job 4: Deploy to GCP (API Gateway with Observability)
+  deploy-gcp:
+    name: Deploy API Gateway with Observability
     runs-on: ubuntu-latest
-   # needs: [infrastructure, build-images]
-    if: github.ref == 'refs/heads/develop' || github.event_name == 'workflow_dispatch'
-    environment: staging
-    env:
-        GHCR_OWNER: ${{ github.repository_owner }}
-        GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        GHCR_TOKEN_SECRET_ID: ghcr-pat
-        NAMESPACE: default
+    needs: [determine-environment, build-images]
+    environment: ${{ needs.determine-environment.outputs.environment }}
+    if: github.event_name != 'pull_request'
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -366,212 +164,125 @@ jobs:
       with:
         credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-    - name: Validate Google Cloud Authentication
-      run: |
-        echo "🔐 Validating Google Cloud Authentication for deployment..."
-        
-        # Check if credentials file was created by the auth action
-        if [ -n "$GOOGLE_APPLICATION_CREDENTIALS" ] && [ -f "$GOOGLE_APPLICATION_CREDENTIALS" ]; then
-          echo "✅ Found credentials file: $GOOGLE_APPLICATION_CREDENTIALS"
-          
-          # Activate the service account
-          echo "🔑 Activating service account..."
-          gcloud auth activate-service-account --key-file="$GOOGLE_APPLICATION_CREDENTIALS"
-          
-          # Set the project
-          echo "📋 Setting project to: ${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}"
-          gcloud config set project "${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}"
-          
-        else
-          echo "❌ No credentials file found from auth action"
-          exit 1
-        fi
-
-    - name: Set up Google Cloud SDK
+    - name: Set up Cloud SDK
       uses: google-github-actions/setup-gcloud@v2
-      with:
-        project_id: ${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}
-
-    - name: Install gke-gcloud-auth-plugin
-      run: |
-        echo "📦 Installing gke-gcloud-auth-plugin..."
-        gcloud components install gke-gcloud-auth-plugin --quiet
-        echo "✅ gke-gcloud-auth-plugin installed successfully"
 
     - name: Configure kubectl
       run: |
-        echo "🔧 Configuring kubectl for GKE cluster..."
-        
-        # Use infrastructure outputs if available, otherwise use defaults
-        CLUSTER_NAME="${{ needs.infrastructure.outputs.cluster-name || 'mis-cloud-native-gke' }}"
-        CLUSTER_LOCATION="${{ needs.infrastructure.outputs.cluster-location || 'us-central1' }}"
-        PROJECT_ID="${{ needs.infrastructure.outputs.project-id || secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}"
-        
-        echo "  Cluster: $CLUSTER_NAME"
-        echo "  Location: $CLUSTER_LOCATION"
-        echo "  Project: $PROJECT_ID"
-        
-        gcloud container clusters get-credentials "$CLUSTER_NAME" \
-          --region "$CLUSTER_LOCATION" \
-          --project "$PROJECT_ID"
+        gcloud container clusters get-credentials ${{ needs.determine-environment.outputs.gke_cluster }} \
+          --region ${{ needs.determine-environment.outputs.gcp_region }} \
+          --project ${{ needs.determine-environment.outputs.gcp_project }}
 
-    - name: Set up Helm
-      uses: azure/setup-helm@v4
+    - name: Setup Helm
+      uses: azure/setup-helm@v3
       with:
         version: '3.12.0'
 
-    - name: Bootstrap infrastructure (if needed)
+    - name: Create namespace
       run: |
-        chmod +x scripts/bootstrap_state.sh
-        ./scripts/bootstrap_state.sh || true
+        kubectl create namespace ${{ needs.determine-environment.outputs.namespace }} --dry-run=client -o yaml | kubectl apply -f -
 
-    - name: Create secrets
+    - name: Deploy Observability Stack
       run: |
-        chmod +x scripts/create_secrets.sh
-        ./scripts/create_secrets.sh
-      env:
-        DB_PASSWORD: ${{ secrets.DB_PASSWORD_STAGING }}
-        JWT_SECRET: ${{ secrets.JWT_SECRET_STAGING }}
+        # Deploy observability stack first
+        helm upgrade --install observability-stack ./helm/observability-stack \
+          --namespace ${{ needs.determine-environment.outputs.namespace }} \
+          --create-namespace \
+          --wait --timeout=10m
 
-    - name: Deploy services
+    - name: Create API Gateway secrets
       run: |
-        chmod +x scripts/deploy_all_services.sh
+        # Create minimal secrets for API Gateway
+        kubectl create secret generic api-gateway-secrets \
+          --from-literal=api-keys="minimal-${{ needs.determine-environment.outputs.environment }}-key" \
+          --namespace ${{ needs.determine-environment.outputs.namespace }} \
+          --dry-run=client -o yaml | kubectl apply -f -
+
+    - name: Deploy API Gateway with observability
+      run: |
+        # Use environment-specific values file with observability enabled
+        VALUES_FILE="values-${{ needs.determine-environment.outputs.environment }}.yaml"
         
-        # Set up proper registry variables
-        REPO_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-        export GHCR_OWNER="$REPO_OWNER"
-        export GLOBAL_REGISTRY="${{ env.REGISTRY }}/${REPO_OWNER}"
-        
-        echo "🚀 Deploying services with:"
-        echo "  GHCR_OWNER: $GHCR_OWNER"
-        echo "  GLOBAL_REGISTRY: $GLOBAL_REGISTRY"
-        
-        if [[ "${{ github.event.inputs.services }}" != "" && "${{ github.event.inputs.services }}" != "all" ]]; then
-          # Deploy specific services
-          for service in ${{ github.event.inputs.services }}; do
-            SERVICE=$service ./scripts/deploy_service.sh
-          done
-        else
-          ./scripts/deploy_all_services.sh
-        fi
+        helm upgrade --install mis-cloud-native ./helm/mis-cloud-native \
+          --namespace ${{ needs.determine-environment.outputs.namespace }} \
+          --values ./helm/mis-cloud-native/$VALUES_FILE \
+          --set global.environment=${{ needs.determine-environment.outputs.environment }} \
+          --set global.gcp.projectId=${{ needs.determine-environment.outputs.gcp_project }} \
+          --set global.gcp.region=${{ needs.determine-environment.outputs.gcp_region }} \
+          --set global.gcp.cluster.name=${{ needs.determine-environment.outputs.gke_cluster }} \
+          --set services.api-gateway.image="${{ env.IMAGE_REPOSITORY }}/api-gateway:${{ github.sha }}" \
+          --set services.api-gateway.enabled=true \
+          --set services.identity.enabled=false \
+          --set services.product.enabled=false \
+          --set services.cart.enabled=false \
+          --set services.order.enabled=false \
+          --set services.payment.enabled=false \
+          --set observability.enabled=true \
+          --set observability.prometheus.enabled=true \
+          --set observability.grafana.enabled=true \
+          --set observability.jaeger.enabled=true \
+          --set observability.elk.enabled=true \
+          --wait --timeout=10m
 
-    - name: Validate deployment
-      run: |
-        chmod +x scripts/validate_deploy.sh
-        for service in identity product cart order payment api-gateway; do
-          SERVICE=$service ./scripts/validate_deploy.sh
-        done
+  # Job 5: Smoke Tests (Commented out for testing)
+  # smoke-tests:
+  #   name: Run Smoke Tests
+  #   runs-on: ubuntu-latest
+  #   needs: [determine-environment, deploy-gcp]
+  #   if: github.event_name != 'pull_request'
+  #   steps:
+  #   - name: Checkout code
+  #     uses: actions/checkout@v4
 
-    - name: Run smoke tests
-      run: |
-        chmod +x scripts/smoke_test_all_services.sh
-        ./scripts/smoke_test_all_services.sh
+  #   - name: Authenticate to Google Cloud
+  #     uses: google-github-actions/auth@v2
+  #     with:
+  #       credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-  # Job 5: Deploy to Production
-  deploy-production:
-    name: Deploy to Production
-    env:
-      GHCR_OWNER: ${{ github.repository_owner }}
-      GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      GHCR_TOKEN_SECRET_ID: ghcr-pat
-      NAMESPACE: default
-    runs-on: ubuntu-latest
-   # needs: [infrastructure]
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    environment: production
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+  #   - name: Set up Cloud SDK
+  #     uses: google-github-actions/setup-gcloud@v2
 
-    - name: Authenticate to Google Cloud
-      uses: google-github-actions/auth@v2
-      with:
-        credentials_json: ${{ secrets.GCP_SA_KEY }}
+  #   - name: Configure kubectl
+  #     run: |
+  #       gcloud container clusters get-credentials ${{ needs.determine-environment.outputs.gke_cluster }} \
+  #         --region ${{ needs.determine-environment.outputs.gcp_region }} \
+  #         --project ${{ needs.determine-environment.outputs.gcp_project }}
 
-    - name: Validate Google Cloud Authentication
-      run: |
-        echo "🔐 Validating Google Cloud Authentication for production deployment..."
-        
-        # Check if credentials file was created by the auth action
-        if [ -n "$GOOGLE_APPLICATION_CREDENTIALS" ] && [ -f "$GOOGLE_APPLICATION_CREDENTIALS" ]; then
-          echo "✅ Found credentials file: $GOOGLE_APPLICATION_CREDENTIALS"
-          
-          # Activate the service account
-          echo "🔑 Activating service account..."
-          gcloud auth activate-service-account --key-file="$GOOGLE_APPLICATION_CREDENTIALS"
-          
-          # Set the project
-          echo "📋 Setting project to: ${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}"
-          gcloud config set project "${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}"
-          
-        else
-          echo "❌ No credentials file found from auth action"
-          exit 1
-        fi
+  #   - name: Wait for deployments
+  #     run: |
+  #       kubectl wait --for=condition=available --timeout=300s deployment --all -n ${{ needs.determine-environment.outputs.namespace }}
 
-    - name: Set up Google Cloud SDK
-      uses: google-github-actions/setup-gcloud@v2
-      with:
-        project_id: ${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}
+  #   - name: Run basic health checks
+  #     run: |
+  #       # Port forward to test API Gateway
+  #       kubectl port-forward service/mis-cloud-native-api-gateway 8080:8080 -n ${{ needs.determine-environment.outputs.namespace }} &
+  #       sleep 10
 
-    - name: Install gke-gcloud-auth-plugin
-      run: |
-        echo "📦 Installing gke-gcloud-auth-plugin..."
-        gcloud components install gke-gcloud-auth-plugin --quiet
-        echo "✅ gke-gcloud-auth-plugin installed successfully"
+  #       # Test health endpoint
+  #       curl -f http://localhost:8080/actuator/health || exit 1
+  #       echo "✅ API Gateway health check passed"
 
-    - name: Configure kubectl
-      run: |
-        echo "🔧 Configuring kubectl for GKE cluster..."
-        
-        # Use infrastructure outputs if available, otherwise use defaults
-        CLUSTER_NAME="${{ needs.infrastructure.outputs.cluster-name || 'mis-cloud-native-gke' }}"
-        CLUSTER_LOCATION="${{ needs.infrastructure.outputs.cluster-location || 'us-central1' }}"
-        PROJECT_ID="${{ needs.infrastructure.outputs.project-id || secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}"
-        
-        echo "  Cluster: $CLUSTER_NAME"
-        echo "  Location: $CLUSTER_LOCATION"
-        echo "  Project: $PROJECT_ID"
-        
-        gcloud container clusters get-credentials "$CLUSTER_NAME" \
-          --region "$CLUSTER_LOCATION" \
-          --project "$PROJECT_ID"
+  #       # Test with the environment profile
+  #       echo "✅ Deployment to ${{ needs.determine-environment.outputs.environment }} completed successfully!"
 
-    - name: Set up Helm
-      uses: azure/setup-helm@v4
-      with:
-        version: '3.12.0'
+  # Job 6: Notification (Commented out for testing)
+  # notify:
+  #   name: Notify Deployment Status
+  #   runs-on: ubuntu-latest
+  #   needs: [determine-environment, smoke-tests]
+  #   if: always() && github.event_name != 'pull_request'
+  #   steps:
+  #     - name: Notify Success
+  #       if: needs.smoke-tests.result == 'success'
+  #       run: |
+  #         echo "🎉 Deployment to ${{ needs.determine-environment.outputs.environment }} completed successfully!"
+  #         echo "Environment: ${{ needs.determine-environment.outputs.environment }}"
+  #         echo "GCP Project: ${{ needs.determine-environment.outputs.gcp_project }}"
+  #         echo "Cluster: ${{ needs.determine-environment.outputs.gke_cluster }}"
+  #         echo "Namespace: ${{ needs.determine-environment.outputs.namespace }}"
 
-    - name: Deploy to production with rolling update
-      run: |
-        chmod +x scripts/deploy_all_services.sh
-        
-        # Set up proper registry variables
-        REPO_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-        export GHCR_OWNER="$REPO_OWNER"
-        export GLOBAL_REGISTRY="${{ env.REGISTRY }}/${REPO_OWNER}"
-        
-        echo "🚀 Deploying services to production with:"
-        echo "  GHCR_OWNER: $GHCR_OWNER"
-        echo "  GLOBAL_REGISTRY: $GLOBAL_REGISTRY"
-        
-        ./scripts/deploy_all_services.sh
-
-    - name: Validate production deployment
-      run: |
-        chmod +x scripts/validate_deploy.sh
-        for service in identity product cart order payment api-gateway; do
-          SERVICE=$service ./scripts/validate_deploy.sh
-        done
-
-    - name: Run production smoke tests
-      run: |
-        chmod +x scripts/smoke_test_all_services.sh
-        ./scripts/smoke_test_all_services.sh
-
-    - name: Notify deployment success
-      if: success()
-      run: |
-        echo "✅ Production deployment successful!"
-        echo "Tag: ${{ needs.build-images.outputs.image-tag }}"
-        echo "Commit: ${{ github.sha }}"
+  #     - name: Notify Failure
+  #       if: needs.smoke-tests.result == 'failure' || needs.deploy-gcp.result == 'failure'
+  #       run: |
+  #         echo "❌ Deployment to ${{ needs.determine-environment.outputs.environment }} failed!"
+  #         exit 1

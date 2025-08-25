@@ -26,8 +26,6 @@ spec:
         {{- end }}
       {{- end }}
     spec:
-      imagePullSecrets:
-        - name: ghcr-creds
       containers:
         - name: {{ $key }}
           image: {{ $svc.image }}
@@ -42,25 +40,59 @@ spec:
                 name: {{ printf "db-%s" $key }}
           {{- end }}
           env:
+            # Service-specific environment variables
             {{- range $svc.env }}
-            {{- toYaml . | nindent 12 }}
+            - name: {{ .name }}
+              {{- if .value }}
+              value: {{ .value | quote }}
+              {{- else if .valueFrom }}
+              valueFrom:
+                {{- toYaml .valueFrom | nindent 16 }}
+              {{- end }}
             {{- end }}
+            # Basic service configuration
+            - name: SPRING_APPLICATION_NAME
+              value: "{{ $key }}"
+          {{- if $svc.resources }}
+          resources:
+            {{- toYaml $svc.resources | nindent 12 }}
+          {{- end }}
+          {{- if $svc.readinessProbe }}
           readinessProbe:
             httpGet:
               path: {{ $svc.readinessProbe.path | default "/actuator/health" }}
               port: http
             initialDelaySeconds: {{ $svc.readinessProbe.initialDelaySeconds | default 10 }}
             periodSeconds: {{ $svc.readinessProbe.periodSeconds | default 10 }}
+            {{- if $svc.readinessProbe.timeoutSeconds }}
+            timeoutSeconds: {{ $svc.readinessProbe.timeoutSeconds }}
+            {{- end }}
+            {{- if $svc.readinessProbe.failureThreshold }}
+            failureThreshold: {{ $svc.readinessProbe.failureThreshold }}
+            {{- end }}
+          {{- end }}
+          {{- if $svc.livenessProbe }}
           livenessProbe:
             httpGet:
               path: {{ $svc.livenessProbe.path | default "/actuator/health" }}
               port: http
             initialDelaySeconds: {{ $svc.livenessProbe.initialDelaySeconds | default 20 }}
             periodSeconds: {{ $svc.livenessProbe.periodSeconds | default 10 }}
+            {{- if $svc.livenessProbe.timeoutSeconds }}
+            timeoutSeconds: {{ $svc.livenessProbe.timeoutSeconds }}
+            {{- end }}
+            {{- if $svc.livenessProbe.failureThreshold }}
+            failureThreshold: {{ $svc.livenessProbe.failureThreshold }}
+            {{- end }}
+          {{- end }}
           securityContext:
             allowPrivilegeEscalation: false
-          resources:
-            {{- toYaml ($svc.resources | default dict) | nindent 12 }}
+            runAsNonRoot: true
+            runAsUser: 1000
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: false
 ---
 {{- end }}
 {{- end }}

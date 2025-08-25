@@ -1,0 +1,74 @@
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      routes:
+        - id: product-service
+          uri: http://product-service.production.svc.cluster.local:8081
+          predicates:
+            - Path=/api/products/**
+        - id: order-service
+          uri: http://order-service.production.svc.cluster.local:8082
+          predicates:
+            - Path=/api/orders/**
+        - id: cart-service
+          uri: http://cart-service.production.svc.cluster.local:8083
+          predicates:
+            - Path=/api/cart/**
+        - id: payment-service
+          uri: http://payment-service.production.svc.cluster.local:8084
+          predicates:
+            - Path=/api/payments/**
+        - id: identity-service
+          uri: http://identity-service.production.svc.cluster.local:8085
+          predicates:
+            - Path=/api/auth/**
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${JWT_ISSUER_URI:http://identity-service.production.svc.cluster.local:8085}
+          jwk-set-uri: ${JWT_JWK_SET_URI:http://identity-service.production.svc.cluster.local:8085/.well-known/jwks.json}
+
+server:
+  port: 8080
+
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO
+    org.springframework.web: WARN
+    org.springframework.security: WARN
+    com.sparkage: INFO
+  file:
+    name: logs/api-gateway.log
+  logback:
+    rollingpolicy:
+      max-file-size: 100MB
+      total-size-cap: 5GB
+      max-history: 30
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus
+  endpoint:
+    health:
+      show-details: never
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      default:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+
+LOGSTASH_HOST: ${LOGSTASH_HOST:logstash-service.observability.svc.cluster.local}
+LOGSTASH_PORT: ${LOGSTASH_PORT:5000}
+ENV: production

@@ -1,0 +1,47 @@
+# Default configuration - development profile (no observability)
+spring:
+  application:
+    name: cart-service
+  profiles:
+    active: development
+  datasource:
+    url: jdbc:postgresql://localhost:5434/cartdb
+    username: cart
+    password: cart
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 2
+      minimum-idle: 1
+      idle-timeout: 60000
+      connection-timeout: 30000
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    show-sql: false
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+
+server:
+  port: 9002
+
+# Basic management endpoints (no observability)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      enabled: true
+      show-details: when-authorized
+
+# Basic logging for development
+logging:
+  level:
+    com.sparkage: INFO
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

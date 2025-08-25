@@ -1,0 +1,65 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: observability-config
+  namespace: {{ include "observability-stack.namespace" . }}
+  labels:
+    {{- include "observability-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: config
+data:
+  # Prometheus configuration
+  prometheus.host: "prometheus-service.{{ include "observability-stack.namespace" . }}.svc.cluster.local"
+  prometheus.port: "{{ .Values.prometheus.service.port }}"
+  prometheus.url: "http://prometheus-service.{{ include "observability-stack.namespace" . }}.svc.cluster.local:{{ .Values.prometheus.service.port }}"
+
+  # Grafana configuration
+  grafana.host: "grafana-service.{{ include "observability-stack.namespace" . }}.svc.cluster.local"
+  grafana.port: "{{ .Values.grafana.service.port }}"
+  grafana.url: "http://grafana-service.{{ include "observability-stack.namespace" . }}.svc.cluster.local:{{ .Values.grafana.service.port }}"
+
+  # Elasticsearch configuration
+  elasticsearch.host: "elasticsearch-service.{{ include "observability-stack.namespace" . }}.svc.cluster.local"
+  elasticsearch.port: "{{ .Values.elasticsearch.service.port }}"
+  elasticsearch.url: "http://elasticsearch-service.{{ include "observability-stack.namespace" . }}.svc.cluster.local:{{ .Values.elasticsearch.service.port }}"
+
+  # Logstash configuration
+  logstash.host: "logstash-service.{{ include "observability-stack.namespace" . }}.svc.cluster.local"
+  logstash.tcp.port: "{{ .Values.logstash.service.tcpPort }}"
+  logstash.http.port: "{{ .Values.logstash.service.httpPort }}"
+  logstash.tcp.url: "logstash-service.{{ include "observability-stack.namespace" . }}.svc.cluster.local:{{ .Values.logstash.service.tcpPort }}"
+
+  # Kibana configuration
+  kibana.host: "kibana-service.{{ include "observability-stack.namespace" . }}.svc.cluster.local"
+  kibana.port: "{{ .Values.kibana.service.port }}"
+  kibana.url: "http://kibana-service.{{ include "observability-stack.namespace" . }}.svc.cluster.local:{{ .Values.kibana.service.port }}"
+
+  # Jaeger configuration
+  jaeger.query.host: "jaeger-query-service.{{ include "observability-stack.namespace" . }}.svc.cluster.local"
+  jaeger.query.port: "{{ .Values.jaeger.service.uiPort }}"
+  jaeger.query.url: "http://jaeger-query-service.{{ include "observability-stack.namespace" . }}.svc.cluster.local:{{ .Values.jaeger.service.uiPort }}"
+  jaeger.collector.host: "jaeger-collector-service.{{ include "observability-stack.namespace" . }}.svc.cluster.local"
+  jaeger.collector.http.port: "{{ .Values.jaeger.service.collectorHttpPort }}"
+  jaeger.collector.grpc.port: "{{ .Values.jaeger.service.collectorGrpcPort }}"
+  jaeger.agent.host: "jaeger-agent-service.{{ include "observability-stack.namespace" . }}.svc.cluster.local"
+  jaeger.agent.port: "{{ .Values.jaeger.service.agentUdpPort }}"
+
+  # Application configuration for microservices
+  spring.application.observability.enabled: "true"
+  management.endpoints.web.exposure.include: "*"
+  management.endpoint.metrics.enabled: "true"
+  management.endpoint.health.enabled: "true"
+  management.endpoint.prometheus.enabled: "true"
+  management.metrics.export.prometheus.enabled: "true"
+
+  # Logging configuration
+  logging.level.com.sparkage: "DEBUG"
+  logging.level.org.springframework.cloud.gateway: "DEBUG"
+  logging.pattern.console: "%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(${LOG_LEVEL_PATTERN:-%5p}) %clr(${PID:- }){magenta} %clr(---){faint} %clr([%15.15t]){faint} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}"
+
+  # Tracing configuration
+  opentracing.jaeger.service-name: "${spring.application.name:unknown-service}"
+  opentracing.jaeger.sampler-type: "const"
+  opentracing.jaeger.sampler-param: "1"
+  opentracing.jaeger.log-spans: "false"
+  opentracing.jaeger.enable-b3-propagation: "true"
+

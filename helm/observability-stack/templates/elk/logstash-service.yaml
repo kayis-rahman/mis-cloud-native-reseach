@@ -1,0 +1,33 @@
+{{- if .Values.logstash.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: logstash-service
+  namespace: {{ include "observability-stack.namespace" . }}
+  labels:
+    {{- include "observability-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: logstash
+  {{- with .Values.logstash.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.logstash.service.type }}
+  ports:
+  - port: {{ .Values.logstash.service.tcpPort }}
+    targetPort: {{ .Values.logstash.service.tcpPort }}
+    protocol: TCP
+    name: tcp
+  - port: {{ .Values.logstash.service.httpPort }}
+    targetPort: {{ .Values.logstash.service.httpPort }}
+    protocol: TCP
+    name: http
+  - port: 5044
+    targetPort: 5044
+    protocol: TCP
+    name: beats
+  selector:
+    {{- include "observability-stack.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: logstash
+{{- end }}
+
