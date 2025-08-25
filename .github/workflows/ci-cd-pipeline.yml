@@ -183,6 +183,7 @@ jobs:
     - name: 'Deploy Infrastructure - Step 1: Basic Infrastructure'
       if: env.GCP_SA_KEY != ''
       run: |
+        gcloud auth list
         echo "🏗️ Step 1: Deploying basic infrastructure (APIs, networking, GKE)..."
         # Export Terraform environment variables
         export TF_VAR_gcp_project_id="${{ env.GCP_PROJECT_ID }}"
