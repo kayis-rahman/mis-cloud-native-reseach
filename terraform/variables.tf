@@ -1,7 +1,7 @@
 variable "project_name" {
   description = "Base name for resources"
   type        = string
-  default     = "mis-cloud-native"
+  default     = "mis-research-cloud-native"
 }
 
 variable "gcp_project_id" {

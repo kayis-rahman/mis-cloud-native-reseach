@@ -20,6 +20,8 @@ terraform init -input=false
 echo "[INFO] Applying base infra (APIs, network, GKE). This may take several minutes..."
 terraform apply -auto-approve \
   -target=google_project_service.services \
+  -target=google_service_account.gke_node_service_account \
+  -target=google_project_iam_member.gke_node_service_account_roles \
   -target=google_compute_network.vpc \
   -target=google_compute_subnetwork.subnet \
   -target=google_compute_firewall.allow_internal \

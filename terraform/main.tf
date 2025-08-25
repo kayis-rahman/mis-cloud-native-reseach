@@ -49,6 +49,30 @@ resource "google_compute_subnetwork" "subnet" {
 }
 
 ############################
+# GKE Service Account
+############################
+resource "google_service_account" "gke_node_service_account" {
+  account_id   = "${var.project_name}-gke-node-sa"
+  display_name = "GKE Node Service Account"
+  description  = "Service account for GKE node pools"
+}
+
+resource "google_project_iam_member" "gke_node_service_account_roles" {
+  for_each = toset([
+    "roles/logging.logWriter",
+    "roles/monitoring.metricWriter",
+    "roles/monitoring.viewer",
+    "roles/stackdriver.resourceMetadata.writer",
+    "roles/storage.objectViewer",
+    "roles/artifactregistry.reader"
+  ])
+
+  project = var.gcp_project_id
+  role    = each.key
+  member  = "serviceAccount:${google_service_account.gke_node_service_account.email}"
+}
+
+############################
 # GKE Cluster - POC Budget Optimized
 ############################
 resource "google_container_cluster" "gke" {
@@ -112,7 +136,11 @@ resource "google_container_cluster" "gke" {
     }
   }
 
-  depends_on = [google_project_service.services]
+  depends_on = [
+    google_project_service.services,
+    google_service_account.gke_node_service_account,
+    google_project_iam_member.gke_node_service_account_roles
+  ]
 }
 
 # Single cost-optimized node pool for all workloads
@@ -156,6 +184,8 @@ resource "google_container_node_pool" "primary" {
       value  = "poc"
       effect = "NO_SCHEDULE"
     }
+
+    service_account = google_service_account.gke_node_service_account.email
   }
 
   # Upgrade settings for better reliability
@@ -169,7 +199,11 @@ resource "google_container_node_pool" "primary" {
     auto_upgrade = true
   }
 
-  depends_on = [google_container_cluster.gke]
+  depends_on = [
+    google_container_cluster.gke,
+    google_service_account.gke_node_service_account,
+    google_project_iam_member.gke_node_service_account_roles
+  ]
 }
 
 ############################

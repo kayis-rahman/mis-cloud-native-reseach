@@ -22,8 +22,8 @@ env:
   REGISTRY: ghcr.io
   MAVEN_OPTS: -Dmaven.repo.local=.m2/repository -Xmx1024m
   IMAGE_REPOSITORY: ghcr.io/kayis-rahman/mis-cloud-native-research
-  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT || 'mis-cloud-native-research' }}
-  GKE_CLUSTER: ${{ secrets.GKE_CLUSTER_NAME || 'mis-cloud-native-gke' }}
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT || 'mis-research-cloud-native' }}
+  GKE_CLUSTER: ${{ secrets.GKE_CLUSTER_NAME || 'mis-research-cloud-native-gke' }}
   GCP_REGION: ${{ secrets.GCP_REGION || 'us-central1' }}
   GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
 
