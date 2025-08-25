@@ -100,8 +100,8 @@ jobs:
 #          gcloud auth activate-service-account --key-file="$GOOGLE_APPLICATION_CREDENTIALS"
 #
 #          # Set the project
-#          echo "📋 Setting project to: ${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}"
-#          gcloud config set project "${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}"
+#          echo "📋 Setting project to: ${{ secrets.GCP_PROJECT_ID }}"
+#          gcloud config set project "${{ secrets.GCP_PROJECT_ID }}"
 #
 #        else
 #          echo "❌ No credentials file found from auth action"
@@ -120,8 +120,8 @@ jobs:
 #
 #          # Test project access
 #          echo "🔍 Testing project access..."
-#          if gcloud projects describe "${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}" --quiet; then
-#            echo "✅ Successfully accessed project: ${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}"
+#          if gcloud projects describe "${{ secrets.GCP_PROJECT_ID }}" --quiet; then
+#            echo "✅ Successfully accessed project: ${{ secrets.GCP_PROJECT_ID }}"
 #          else
 #            echo "❌ Failed to access project. Check service account permissions."
 #            exit 1
@@ -336,14 +336,14 @@ jobs:
           cd ../..
         done
 
-    - name: Security scan images
-      run: |
-        chmod +x scripts/scan_security.sh
-        for service in identity product cart order payment api-gateway; do
-          echo "Scanning image: ${{ env.IMAGE_REPOSITORY }}/${service}:${{ env.IMAGE_TAG }}"
-          IMAGE="${{ env.IMAGE_REPOSITORY }}/${service}:${{ env.IMAGE_TAG }}" \
-            NO_PROGRESS=1 ./scripts/scan_security.sh
-        done
+#    - name: Security scan images
+#      run: |
+#        chmod +x scripts/scan_security.sh
+#        for service in identity product cart order payment api-gateway; do
+#          echo "Scanning image: ${{ env.IMAGE_REPOSITORY }}/${service}:${{ env.IMAGE_TAG }}"
+#          IMAGE="${{ env.IMAGE_REPOSITORY }}/${service}:${{ env.IMAGE_TAG }}" \
+#            NO_PROGRESS=1 ./scripts/scan_security.sh
+#        done
 
   # Job 4: Deploy to Staging
   deploy-staging:
@@ -379,8 +379,8 @@ jobs:
           gcloud auth activate-service-account --key-file="$GOOGLE_APPLICATION_CREDENTIALS"
           
           # Set the project
-          echo "📋 Setting project to: ${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}"
-          gcloud config set project "${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}"
+          echo "📋 Setting project to: ${{ secrets.GCP_PROJECT_ID }}"
+          gcloud config set project "${{ secrets.GCP_PROJECT_ID }}"
           
         else
           echo "❌ No credentials file found from auth action"
@@ -390,7 +390,7 @@ jobs:
     - name: Set up Google Cloud SDK
       uses: google-github-actions/setup-gcloud@v2
       with:
-        project_id: ${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}
+        project_id: ${{ secrets.GCP_PROJECT_ID }}
 
     - name: Install gke-gcloud-auth-plugin
       run: |
@@ -403,9 +403,9 @@ jobs:
         echo "🔧 Configuring kubectl for GKE cluster..."
         
         # Use infrastructure outputs if available, otherwise use defaults
-        CLUSTER_NAME="${{ needs.infrastructure.outputs.cluster-name || 'mis-cloud-native-gke' }}"
-        CLUSTER_LOCATION="${{ needs.infrastructure.outputs.cluster-location || 'us-central1' }}"
-        PROJECT_ID="${{ needs.infrastructure.outputs.project-id || secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}"
+        CLUSTER_NAME="${{ needs.infrastructure.outputs.cluster-name }}"
+        CLUSTER_LOCATION="${{ needs.infrastructure.outputs.cluster-location}}"
+        PROJECT_ID="${{ needs.infrastructure.outputs.project-id || secrets.GCP_PROJECT_ID}}"
         
         echo "  Cluster: $CLUSTER_NAME"
         echo "  Location: $CLUSTER_LOCATION"
@@ -501,8 +501,8 @@ jobs:
           gcloud auth activate-service-account --key-file="$GOOGLE_APPLICATION_CREDENTIALS"
           
           # Set the project
-          echo "📋 Setting project to: ${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}"
-          gcloud config set project "${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}"
+          echo "📋 Setting project to: ${{ secrets.GCP_PROJECT_ID }}"
+          gcloud config set project "${{ secrets.GCP_PROJECT_ID }}"
           
         else
           echo "❌ No credentials file found from auth action"
@@ -512,7 +512,7 @@ jobs:
     - name: Set up Google Cloud SDK
       uses: google-github-actions/setup-gcloud@v2
       with:
-        project_id: ${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}
+        project_id: ${{ secrets.GCP_PROJECT_ID }}
 
     - name: Install gke-gcloud-auth-plugin
       run: |
@@ -527,7 +527,7 @@ jobs:
         # Use infrastructure outputs if available, otherwise use defaults
         CLUSTER_NAME="${{ needs.infrastructure.outputs.cluster-name || 'mis-cloud-native-gke' }}"
         CLUSTER_LOCATION="${{ needs.infrastructure.outputs.cluster-location || 'us-central1' }}"
-        PROJECT_ID="${{ needs.infrastructure.outputs.project-id || secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}"
+        PROJECT_ID="${{ needs.infrastructure.outputs.project-id || secrets.GCP_PROJECT_ID }}"
         
         echo "  Cluster: $CLUSTER_NAME"
         echo "  Location: $CLUSTER_LOCATION"

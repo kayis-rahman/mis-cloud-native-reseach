@@ -124,6 +124,48 @@ services:
         value: "redis-service.{{ .Values.global.environment }}"
       - name: SPRING_REDIS_PORT
         value: "6379"
+      # Micrometer/Prometheus exposure
+      - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
+        value: "health,info,prometheus"
+      - name: MANAGEMENT_ENDPOINT_PROMETHEUS_ENABLED
+        value: "true"
+      - name: MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED
+        value: "true"
+      # Downward API for namespace
+      - name: POD_NAMESPACE
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.namespace
+      # Grafana Cloud credentials from secret
+      - name: GRAFANA_CLOUD_STACK_ID
+        valueFrom:
+          secretKeyRef:
+            name: grafana-cloud-credentials
+            key: stack_id
+      - name: GRAFANA_CLOUD_API_KEY
+        valueFrom:
+          secretKeyRef:
+            name: grafana-cloud-credentials
+            key: api_key
+      # OpenTelemetry tracing
+      - name: OTEL_SERVICE_NAME
+        value: "api-gateway"
+      - name: OTEL_RESOURCE_ATTRIBUTES
+        value: "service.name=api-gateway,service.namespace=$(POD_NAMESPACE),deployment.environment={{ .Values.global.environment }}"
+      - name: OTEL_TRACES_EXPORTER
+        value: "otlp"
+      - name: OTEL_EXPORTER_OTLP_PROTOCOL
+        value: "http/protobuf"
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: "https://otlp-gateway-{{ .Values.grafanaCloud.region }}.grafana.net"
+      - name: OTEL_EXPORTER_OTLP_HEADERS
+        value: "Authorization=Bearer $(GRAFANA_CLOUD_API_KEY),X-Scope-OrgID=$(GRAFANA_CLOUD_STACK_ID)"
+      - name: OTEL_PROPAGATORS
+        value: "tracecontext,baggage"
+    annotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/path: "/actuator/prometheus"
+      prometheus.io/port: "8080"
     livenessProbe:
       path: /actuator/health/liveness
       initialDelaySeconds: 30
@@ -183,6 +225,48 @@ services:
     env:
       - name: SPRING_PROFILES_ACTIVE
         value: "{{ .Values.global.environment }}"
+      # Micrometer/Prometheus exposure
+      - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
+        value: "health,info,prometheus"
+      - name: MANAGEMENT_ENDPOINT_PROMETHEUS_ENABLED
+        value: "true"
+      - name: MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED
+        value: "true"
+      # Downward API for namespace
+      - name: POD_NAMESPACE
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.namespace
+      # Grafana Cloud credentials from secret
+      - name: GRAFANA_CLOUD_STACK_ID
+        valueFrom:
+          secretKeyRef:
+            name: grafana-cloud-credentials
+            key: stack_id
+      - name: GRAFANA_CLOUD_API_KEY
+        valueFrom:
+          secretKeyRef:
+            name: grafana-cloud-credentials
+            key: api_key
+      # OpenTelemetry tracing
+      - name: OTEL_SERVICE_NAME
+        value: "identity-service"
+      - name: OTEL_RESOURCE_ATTRIBUTES
+        value: "service.name=identity-service,service.namespace=$(POD_NAMESPACE),deployment.environment={{ .Values.global.environment }}"
+      - name: OTEL_TRACES_EXPORTER
+        value: "otlp"
+      - name: OTEL_EXPORTER_OTLP_PROTOCOL
+        value: "http/protobuf"
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: "https://otlp-gateway-{{ .Values.grafanaCloud.region }}.grafana.net"
+      - name: OTEL_EXPORTER_OTLP_HEADERS
+        value: "Authorization=Bearer $(GRAFANA_CLOUD_API_KEY),X-Scope-OrgID=$(GRAFANA_CLOUD_STACK_ID)"
+      - name: OTEL_PROPAGATORS
+        value: "tracecontext,baggage"
+    annotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/path: "/actuator/prometheus"
+      prometheus.io/port: "8085"
     livenessProbe:
       path: /actuator/health/liveness
       initialDelaySeconds: 30
@@ -212,6 +296,48 @@ services:
     env:
       - name: SPRING_PROFILES_ACTIVE
         value: "{{ .Values.global.environment }}"
+      # Micrometer/Prometheus exposure
+      - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
+        value: "health,info,prometheus"
+      - name: MANAGEMENT_ENDPOINT_PROMETHEUS_ENABLED
+        value: "true"
+      - name: MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED
+        value: "true"
+      # Downward API for namespace
+      - name: POD_NAMESPACE
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.namespace
+      # Grafana Cloud credentials from secret
+      - name: GRAFANA_CLOUD_STACK_ID
+        valueFrom:
+          secretKeyRef:
+            name: grafana-cloud-credentials
+            key: stack_id
+      - name: GRAFANA_CLOUD_API_KEY
+        valueFrom:
+          secretKeyRef:
+            name: grafana-cloud-credentials
+            key: api_key
+      # OpenTelemetry tracing
+      - name: OTEL_SERVICE_NAME
+        value: "product-service"
+      - name: OTEL_RESOURCE_ATTRIBUTES
+        value: "service.name=product-service,service.namespace=$(POD_NAMESPACE),deployment.environment={{ .Values.global.environment }}"
+      - name: OTEL_TRACES_EXPORTER
+        value: "otlp"
+      - name: OTEL_EXPORTER_OTLP_PROTOCOL
+        value: "http/protobuf"
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: "https://otlp-gateway-{{ .Values.grafanaCloud.region }}.grafana.net"
+      - name: OTEL_EXPORTER_OTLP_HEADERS
+        value: "Authorization=Bearer $(GRAFANA_CLOUD_API_KEY),X-Scope-OrgID=$(GRAFANA_CLOUD_STACK_ID)"
+      - name: OTEL_PROPAGATORS
+        value: "tracecontext,baggage"
+    annotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/path: "/actuator/prometheus"
+      prometheus.io/port: "8081"
     livenessProbe:
       path: /actuator/health/liveness
       initialDelaySeconds: 20
@@ -241,6 +367,48 @@ services:
     env:
       - name: SPRING_PROFILES_ACTIVE
         value: "{{ .Values.global.environment }}"
+      # Micrometer/Prometheus exposure
+      - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
+        value: "health,info,prometheus"
+      - name: MANAGEMENT_ENDPOINT_PROMETHEUS_ENABLED
+        value: "true"
+      - name: MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED
+        value: "true"
+      # Downward API for namespace
+      - name: POD_NAMESPACE
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.namespace
+      # Grafana Cloud credentials from secret
+      - name: GRAFANA_CLOUD_STACK_ID
+        valueFrom:
+          secretKeyRef:
+            name: grafana-cloud-credentials
+            key: stack_id
+      - name: GRAFANA_CLOUD_API_KEY
+        valueFrom:
+          secretKeyRef:
+            name: grafana-cloud-credentials
+            key: api_key
+      # OpenTelemetry tracing
+      - name: OTEL_SERVICE_NAME
+        value: "cart-service"
+      - name: OTEL_RESOURCE_ATTRIBUTES
+        value: "service.name=cart-service,service.namespace=$(POD_NAMESPACE),deployment.environment={{ .Values.global.environment }}"
+      - name: OTEL_TRACES_EXPORTER
+        value: "otlp"
+      - name: OTEL_EXPORTER_OTLP_PROTOCOL
+        value: "http/protobuf"
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: "https://otlp-gateway-{{ .Values.grafanaCloud.region }}.grafana.net"
+      - name: OTEL_EXPORTER_OTLP_HEADERS
+        value: "Authorization=Bearer $(GRAFANA_CLOUD_API_KEY),X-Scope-OrgID=$(GRAFANA_CLOUD_STACK_ID)"
+      - name: OTEL_PROPAGATORS
+        value: "tracecontext,baggage"
+    annotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/path: "/actuator/prometheus"
+      prometheus.io/port: "8083"
     livenessProbe:
       path: /actuator/health/liveness
       initialDelaySeconds: 20
@@ -270,6 +438,48 @@ services:
     env:
       - name: SPRING_PROFILES_ACTIVE
         value: "{{ .Values.global.environment }}"
+      # Micrometer/Prometheus exposure
+      - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
+        value: "health,info,prometheus"
+      - name: MANAGEMENT_ENDPOINT_PROMETHEUS_ENABLED
+        value: "true"
+      - name: MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED
+        value: "true"
+      # Downward API for namespace
+      - name: POD_NAMESPACE
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.namespace
+      # Grafana Cloud credentials from secret
+      - name: GRAFANA_CLOUD_STACK_ID
+        valueFrom:
+          secretKeyRef:
+            name: grafana-cloud-credentials
+            key: stack_id
+      - name: GRAFANA_CLOUD_API_KEY
+        valueFrom:
+          secretKeyRef:
+            name: grafana-cloud-credentials
+            key: api_key
+      # OpenTelemetry tracing
+      - name: OTEL_SERVICE_NAME
+        value: "order-service"
+      - name: OTEL_RESOURCE_ATTRIBUTES
+        value: "service.name=order-service,service.namespace=$(POD_NAMESPACE),deployment.environment={{ .Values.global.environment }}"
+      - name: OTEL_TRACES_EXPORTER
+        value: "otlp"
+      - name: OTEL_EXPORTER_OTLP_PROTOCOL
+        value: "http/protobuf"
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: "https://otlp-gateway-{{ .Values.grafanaCloud.region }}.grafana.net"
+      - name: OTEL_EXPORTER_OTLP_HEADERS
+        value: "Authorization=Bearer $(GRAFANA_CLOUD_API_KEY),X-Scope-OrgID=$(GRAFANA_CLOUD_STACK_ID)"
+      - name: OTEL_PROPAGATORS
+        value: "tracecontext,baggage"
+    annotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/path: "/actuator/prometheus"
+      prometheus.io/port: "8082"
     livenessProbe:
       path: /actuator/health/liveness
       initialDelaySeconds: 20
@@ -299,6 +509,48 @@ services:
     env:
       - name: SPRING_PROFILES_ACTIVE
         value: "{{ .Values.global.environment }}"
+      # Micrometer/Prometheus exposure
+      - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
+        value: "health,info,prometheus"
+      - name: MANAGEMENT_ENDPOINT_PROMETHEUS_ENABLED
+        value: "true"
+      - name: MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED
+        value: "true"
+      # Downward API for namespace
+      - name: POD_NAMESPACE
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.namespace
+      # Grafana Cloud credentials from secret
+      - name: GRAFANA_CLOUD_STACK_ID
+        valueFrom:
+          secretKeyRef:
+            name: grafana-cloud-credentials
+            key: stack_id
+      - name: GRAFANA_CLOUD_API_KEY
+        valueFrom:
+          secretKeyRef:
+            name: grafana-cloud-credentials
+            key: api_key
+      # OpenTelemetry tracing
+      - name: OTEL_SERVICE_NAME
+        value: "payment-service"
+      - name: OTEL_RESOURCE_ATTRIBUTES
+        value: "service.name=payment-service,service.namespace=$(POD_NAMESPACE),deployment.environment={{ .Values.global.environment }}"
+      - name: OTEL_TRACES_EXPORTER
+        value: "otlp"
+      - name: OTEL_EXPORTER_OTLP_PROTOCOL
+        value: "http/protobuf"
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: "https://otlp-gateway-{{ .Values.grafanaCloud.region }}.grafana.net"
+      - name: OTEL_EXPORTER_OTLP_HEADERS
+        value: "Authorization=Bearer $(GRAFANA_CLOUD_API_KEY),X-Scope-OrgID=$(GRAFANA_CLOUD_STACK_ID)"
+      - name: OTEL_PROPAGATORS
+        value: "tracecontext,baggage"
+    annotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/path: "/actuator/prometheus"
+      prometheus.io/port: "8084"
     livenessProbe:
       path: /actuator/health/liveness
       initialDelaySeconds: 20
