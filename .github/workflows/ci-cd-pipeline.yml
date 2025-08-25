@@ -184,6 +184,7 @@ jobs:
       if: env.GCP_SA_KEY != ''
       run: |
         echo "🏗️ Step 1: Deploying basic infrastructure (APIs, networking, GKE)..."
+        echo "GCP_SA_KEY: ${{ env.GCP_SA_KEY }}"
         # Export Terraform environment variables
         export TF_VAR_gcp_project_id="${{ env.GCP_PROJECT_ID }}"
         export TF_VAR_gcp_region="${{ env.GCP_REGION }}"
