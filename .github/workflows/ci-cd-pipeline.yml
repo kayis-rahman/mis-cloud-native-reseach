@@ -162,26 +162,26 @@ jobs:
         fi
 
     - name: Authenticate to Google Cloud
-      if: secrets.GCP_SA_KEY != ''
+      if: env.GCP_SA_KEY != ''
       uses: google-github-actions/auth@v2
       with:
         credentials_json: ${{ secrets.GCP_SA_KEY }}
 
     - name: Set up Google Cloud SDK
-      if: secrets.GCP_SA_KEY != ''
+      if: env.GCP_SA_KEY != ''
       uses: google-github-actions/setup-gcloud@v2
       with:
         project_id: ${{ env.GCP_PROJECT_ID }}
         install_components: 'gke-gcloud-auth-plugin'
 
     - name: Setup Terraform
-      if: secrets.GCP_SA_KEY != ''
+      if: env.GCP_SA_KEY != ''
       uses: hashicorp/setup-terraform@v3
       with:
         terraform_version: 1.5.0
 
     - name: 'Deploy Infrastructure - Step 1: Basic Infrastructure'
-      if: secrets.GCP_SA_KEY != ''
+      if: env.GCP_SA_KEY != ''
       run: |
         echo "🏗️ Step 1: Deploying basic infrastructure (APIs, networking, GKE)..."
         # Export Terraform environment variables
@@ -193,7 +193,7 @@ jobs:
         echo "✅ Basic infrastructure deployment complete"
 
     - name: 'Deploy Infrastructure - Step 2: Databases'
-      if: secrets.GCP_SA_KEY != ''
+      if: env.GCP_SA_KEY != ''
       run: |
         echo "🗄️ Step 2: Deploying databases and related secrets..."
         # Export Terraform environment variables
@@ -205,7 +205,7 @@ jobs:
         echo "✅ Database deployment complete"
 
     - name: 'Deploy Infrastructure - Step 3: Kubernetes Secrets'
-      if: secrets.GCP_SA_KEY != ''
+      if: env.GCP_SA_KEY != ''
       run: |
         echo "🔑 Step 3: Managing Kubernetes secrets..."
         # Export Terraform environment variables
@@ -221,7 +221,7 @@ jobs:
         echo "✅ Kubernetes secrets deployment complete"
 
     - name: Infrastructure (Test Mode)
-      if: secrets.GCP_SA_KEY == ''
+      if: env.GCP_SA_KEY == ''
       run: |
         echo "🔧 GCP credentials not configured, skipping infrastructure deployment..."
         echo "Would deploy:"
@@ -253,7 +253,7 @@ jobs:
         fi
 
     - name: Authenticate to Google Cloud
-      if: secrets.GCP_SA_KEY != ''
+      if: env.GCP_SA_KEY != ''
       uses: google-github-actions/auth@v2
       with:
         credentials_json: ${{ secrets.GCP_SA_KEY }}
@@ -262,14 +262,14 @@ jobs:
 
 
     - name: Set up Google Cloud SDK
-      if: secrets.GCP_SA_KEY != ''
+      if: env.GCP_SA_KEY != ''
       uses: google-github-actions/setup-gcloud@v2
       with:
         project_id: ${{ env.GCP_PROJECT_ID }}
         install_components: 'gke-gcloud-auth-plugin'
 
     - name: Configure kubectl for GCP
-      if: secrets.GCP_SA_KEY != ''
+      if: env.GCP_SA_KEY != ''
       run: |
         gcloud container clusters get-credentials ${{ env.GKE_CLUSTER }} \
           --region ${{ env.GCP_REGION }} \
@@ -281,7 +281,7 @@ jobs:
         version: '3.12.0'
 
     - name: Deploy Observability Stack
-      if: secrets.GCP_SA_KEY != ''
+      if: env.GCP_SA_KEY != ''
       run: |
         echo "📊 Deploying cost-optimized observability stack..."
         
@@ -307,7 +307,7 @@ jobs:
         echo "✅ Performance-optimized observability stack deployed with SSD storage"
 
     - name: Observability (Test Mode)
-      if: secrets.GCP_SA_KEY == ''
+      if: env.GCP_SA_KEY == ''
       run: |
         echo "🔧 GCP credentials not configured, skipping observability deployment..."
         echo "Would deploy:"
@@ -339,20 +339,20 @@ jobs:
         fi
 
     - name: Authenticate to Google Cloud
-      if: secrets.GCP_SA_KEY != ''
+      if: env.GCP_SA_KEY != ''
       uses: google-github-actions/auth@v2
       with:
         credentials_json: ${{ secrets.GCP_SA_KEY }}
 
     - name: Set up Google Cloud SDK
-      if: secrets.GCP_SA_KEY != ''
+      if: env.GCP_SA_KEY != ''
       uses: google-github-actions/setup-gcloud@v2
       with:
         project_id: ${{ env.GCP_PROJECT_ID }}
         install_components: 'gke-gcloud-auth-plugin'
 
     - name: Configure kubectl for GCP
-      if: secrets.GCP_SA_KEY != ''
+      if: env.GCP_SA_KEY != ''
       run: |
         gcloud container clusters get-credentials ${{ env.GKE_CLUSTER }} \
           --region ${{ env.GCP_REGION }} \
@@ -364,7 +364,7 @@ jobs:
         version: '3.12.0'
 
     - name: Deploy Backend Services
-      if: secrets.GCP_SA_KEY != ''
+      if: env.GCP_SA_KEY != ''
       run: |
         echo "🔧 Deploying backend services..."
         
@@ -385,7 +385,7 @@ jobs:
         echo "✅ All backend services deployment complete"
 
     - name: Backend Services (Test Mode)
-      if: secrets.GCP_SA_KEY == ''
+      if: env.GCP_SA_KEY == ''
       run: |
         echo "🔧 GCP credentials not configured, skipping backend services deployment..."
         echo "Would deploy:"
@@ -422,20 +422,20 @@ jobs:
         echo "📦 Using default image: ${{ inputs.image_tag }}"
 
     - name: Authenticate to Google Cloud
-      if: secrets.GCP_SA_KEY != ''
+      if: env.GCP_SA_KEY != ''
       uses: google-github-actions/auth@v2
       with:
         credentials_json: ${{ secrets.GCP_SA_KEY }}
 
     - name: Set up Google Cloud SDK
-      if: secrets.GCP_SA_KEY != ''
+      if: env.GCP_SA_KEY != ''
       uses: google-github-actions/setup-gcloud@v2
       with:
         project_id: ${{ env.GCP_PROJECT_ID }}
         install_components: 'gke-gcloud-auth-plugin'
 
     - name: Configure kubectl for GCP
-      if: secrets.GCP_SA_KEY != ''
+      if: env.GCP_SA_KEY != ''
       run: |
         gcloud container clusters get-credentials ${{ env.GKE_CLUSTER }} \
           --region ${{ env.GCP_REGION }} \
@@ -463,7 +463,7 @@ jobs:
         echo "✅ Helm chart validation successful"
 
     - name: Deploy API Gateway to GCP
-      if: secrets.GCP_SA_KEY != ''
+      if: env.GCP_SA_KEY != ''
       run: |
         echo "🚀 Deploying API Gateway (final step)..."
         echo "📦 Using image: ${{ env.IMAGE_TAG }}"
@@ -481,7 +481,7 @@ jobs:
         echo "✅ API Gateway deployment complete - Full stack is now deployed!"
 
     - name: API Gateway (Test Mode)
-      if: secrets.GCP_SA_KEY == ''
+      if: env.GCP_SA_KEY == ''
       run: |
         echo "🔧 GCP credentials not configured, running in test mode..."
         echo "Would deploy API Gateway with:"
