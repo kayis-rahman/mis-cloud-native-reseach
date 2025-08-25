@@ -218,36 +218,73 @@ jobs:
       run: |
         echo "🚀 Deploying observability stack to ${{ steps.set-env.outputs.environment }} environment..."
         
-        # Try Helm deployment first
-        if helm upgrade --install observability-stack ./helm/observability-stack \
-          --namespace ${{ steps.set-env.outputs.observability_namespace }} \
-          --create-namespace \
-          --set global.environment=${{ steps.set-env.outputs.environment }} \
-          --set prometheus.enabled=true \
-          --set grafana.enabled=true \
-          --set jaeger.enabled=true \
-          --set elk.enabled=true \
-          --timeout=5m \
-          --wait; then
-          echo "✅ Helm deployment successful"
-        else
-          echo "⚠️ Helm deployment failed, falling back to direct YAML deployment..."
-          
-          # Fallback to direct YAML deployment
-          echo "Deploying Prometheus..."
-          kubectl apply -f observability/prometheus.yaml -n ${{ steps.set-env.outputs.observability_namespace }} || true
-          
-          echo "Deploying Grafana..."
-          kubectl apply -f observability/grafana.yaml -n ${{ steps.set-env.outputs.observability_namespace }} || true
-          
-          echo "Deploying Jaeger..."
-          kubectl apply -f observability/jaeger.yaml -n ${{ steps.set-env.outputs.observability_namespace }} || true
-          
-          echo "Deploying ELK Stack..."
-          kubectl apply -f observability/elk-stack.yaml -n ${{ steps.set-env.outputs.observability_namespace }} || true
-          
-          echo "✅ Fallback YAML deployment completed"
+        # Check for stuck Helm operations and clean them up
+        echo "🔍 Checking for existing Helm operations..."
+        if helm list -n ${{ steps.set-env.outputs.observability_namespace }} | grep -q "pending"; then
+          echo "⚠️ Found pending Helm operation, cleaning up..."
+          helm uninstall observability-stack -n ${{ steps.set-env.outputs.observability_namespace }} || true
+          sleep 10
         fi
+        
+        # Check for any stuck releases and force cleanup
+        if helm status observability-stack -n ${{ steps.set-env.outputs.observability_namespace }} 2>/dev/null | grep -q "STATUS: pending"; then
+          echo "🧹 Forcing cleanup of stuck Helm release..."
+          helm rollback observability-stack 0 -n ${{ steps.set-env.outputs.observability_namespace }} || true
+          helm uninstall observability-stack -n ${{ steps.set-env.outputs.observability_namespace }} --wait || true
+          sleep 15
+        fi
+        
+        # Try Helm deployment with retry logic
+        RETRY_COUNT=0
+        MAX_RETRIES=3
+        
+        while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+          echo "📦 Attempt $((RETRY_COUNT + 1)) of $MAX_RETRIES for Helm deployment..."
+          
+          if helm upgrade --install observability-stack ./helm/observability-stack \
+            --namespace ${{ steps.set-env.outputs.observability_namespace }} \
+            --create-namespace \
+            --set global.environment=${{ steps.set-env.outputs.environment }} \
+            --set prometheus.enabled=true \
+            --set grafana.enabled=true \
+            --set jaeger.enabled=true \
+            --set elk.enabled=true \
+            --timeout=5m \
+            --wait \
+            --force; then
+            echo "✅ Helm deployment successful on attempt $((RETRY_COUNT + 1))"
+            break
+          else
+            echo "❌ Helm deployment failed on attempt $((RETRY_COUNT + 1))"
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            
+            if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+              echo "🔄 Cleaning up for retry..."
+              helm uninstall observability-stack -n ${{ steps.set-env.outputs.observability_namespace }} --wait || true
+              sleep 10
+            else
+              echo "⚠️ All Helm deployment attempts failed, falling back to direct YAML deployment..."
+              
+              # Fallback to direct YAML deployment
+              echo "🔄 Deploying with YAML manifests..."
+              
+              echo "Deploying Prometheus..."
+              kubectl apply -f observability/prometheus.yaml -n ${{ steps.set-env.outputs.observability_namespace }} || true
+              
+              echo "Deploying Grafana..."
+              kubectl apply -f observability/grafana.yaml -n ${{ steps.set-env.outputs.observability_namespace }} || true
+              
+              echo "Deploying Jaeger..."
+              kubectl apply -f observability/jaeger.yaml -n ${{ steps.set-env.outputs.observability_namespace }} || true
+              
+              echo "Deploying ELK Stack..."
+              kubectl apply -f observability/elk-stack.yaml -n ${{ steps.set-env.outputs.observability_namespace }} || true
+              
+              echo "✅ Fallback YAML deployment completed"
+              break
+            fi
+          fi
+        done
 
     - name: Wait for observability components to be ready
       run: |
@@ -614,7 +651,7 @@ jobs:
   deploy-production:
     name: Deploy API Gateway (Production)
     runs-on: ubuntu-latest
-    needs: [build-images, deploy-observability-production]
+    needs: [build-images, deploy_observability_production]
     if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_environment == 'production' && github.event.inputs.deploy_observability != 'true')
     environment: production
     env:
