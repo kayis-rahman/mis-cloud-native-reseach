@@ -52,7 +52,7 @@ resource "google_compute_subnetwork" "subnet" {
 # GKE Service Account
 ############################
 resource "google_service_account" "gke_node_service_account" {
-  account_id   = "${var.project_name}-gke-node-sa"
+  account_id   = "gke-node-sa"  # Shortened to meet 30-char limit
   display_name = "GKE Node Service Account"
   description  = "Service account for GKE node pools"
 }
