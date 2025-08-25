@@ -140,103 +140,103 @@ jobs:
   #       echo "image-tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
   #       echo "Selected image tag: $IMAGE_TAG"
 
-  # Job 2: Deploy Infrastructure
-  deploy-infrastructure:
-    name: Deploy Infrastructure
-    runs-on: ubuntu-latest
-    # needs: [test-and-build]  # COMMENTED OUT - no dependency on test-and-build for now
-    if: ${{ always() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && !cancelled() }}
-    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set environment variables
-      run: |
-        if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-          echo "ENVIRONMENT=production" >> $GITHUB_ENV
-          echo "NAMESPACE=production" >> $GITHUB_ENV
-        else
-          echo "ENVIRONMENT=development" >> $GITHUB_ENV
-          echo "NAMESPACE=development" >> $GITHUB_ENV
-        fi
-
-    - name: Authenticate to Google Cloud
-      if: env.GCP_SA_KEY != ''
-      uses: google-github-actions/auth@v2
-      with:
-        credentials_json: ${{ secrets.GCP_SA_KEY }}
-
-    - name: Set up Google Cloud SDK
-      if: env.GCP_SA_KEY != ''
-      uses: google-github-actions/setup-gcloud@v2
-      with:
-        project_id: ${{ env.GCP_PROJECT_ID }}
-        install_components: 'gke-gcloud-auth-plugin'
-
-    - name: Setup Terraform
-      if: env.GCP_SA_KEY != ''
-      uses: hashicorp/setup-terraform@v3
-      with:
-        terraform_version: 1.5.0
-
-    - name: 'Deploy Infrastructure - Step 1: Basic Infrastructure'
-      if: env.GCP_SA_KEY != ''
-      run: |
-        echo "🏗️ Step 1: Deploying basic infrastructure (APIs, networking, GKE)..."
-        # Export Terraform environment variables
-        export TF_VAR_gcp_project_id="${{ env.GCP_PROJECT_ID }}"
-        export TF_VAR_gcp_region="${{ env.GCP_REGION }}"
-        export TF_VAR_environment="${{ env.ENVIRONMENT }}"
-        chmod +x ./scripts/create_infra.sh
-        ./scripts/create_infra.sh
-        echo "✅ Basic infrastructure deployment complete"
-
-    - name: 'Deploy Infrastructure - Step 2: Databases'
-      if: env.GCP_SA_KEY != ''
-      run: |
-        echo "🗄️ Step 2: Deploying databases and related secrets..."
-        # Export Terraform environment variables
-        export TF_VAR_gcp_project_id="${{ env.GCP_PROJECT_ID }}"
-        export TF_VAR_gcp_region="${{ env.GCP_REGION }}"
-        export TF_VAR_environment="${{ env.ENVIRONMENT }}"
-        chmod +x ./scripts/create_db.sh
-        ./scripts/create_db.sh
-        echo "✅ Database deployment complete"
-
-    - name: 'Deploy Infrastructure - Step 3: Kubernetes Secrets'
-      if: env.GCP_SA_KEY != ''
-      run: |
-        echo "🔑 Step 3: Managing Kubernetes secrets..."
-        # Export Terraform environment variables
-        export TF_VAR_gcp_project_id="${{ env.GCP_PROJECT_ID }}"
-        export TF_VAR_gcp_region="${{ env.GCP_REGION }}"
-        export TF_VAR_environment="${{ env.ENVIRONMENT }}"
-        # Set required environment variables for GHCR secrets
-        export GHCR_OWNER="${{ github.repository_owner }}"
-        export GHCR_TOKEN="${{ secrets.GHCR_TOKEN }}"
-        export GHCR_TOKEN_SECRET_ID="ghcr-pat"
-        chmod +x ./scripts/create_secrets.sh
-        ./scripts/create_secrets.sh
-        echo "✅ Kubernetes secrets deployment complete"
-
-    - name: Infrastructure (Test Mode)
-      if: env.GCP_SA_KEY == ''
-      run: |
-        echo "🔧 GCP credentials not configured, skipping infrastructure deployment..."
-        echo "Would deploy:"
-        echo "  - GKE Cluster"
-        echo "  - VPC and Networking"
-        echo "  - Cloud SQL databases"
-        echo "  - Secret Manager"
-        echo "✅ Infrastructure test mode complete"
+  # Job 2: Deploy Infrastructure - COMMENTED OUT
+  # deploy-infrastructure:
+  #   name: Deploy Infrastructure
+  #   runs-on: ubuntu-latest
+  #   # needs: [test-and-build]  # COMMENTED OUT - no dependency on test-and-build for now
+  #   if: ${{ always() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && !cancelled() }}
+  #   environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
+  #   steps:
+  #   - name: Checkout code
+  #     uses: actions/checkout@v4
+  #
+  #   - name: Set environment variables
+  #     run: |
+  #       if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+  #         echo "ENVIRONMENT=production" >> $GITHUB_ENV
+  #         echo "NAMESPACE=production" >> $GITHUB_ENV
+  #       else
+  #         echo "ENVIRONMENT=development" >> $GITHUB_ENV
+  #         echo "NAMESPACE=development" >> $GITHUB_ENV
+  #       fi
+  #
+  #   - name: Authenticate to Google Cloud
+  #     if: env.GCP_SA_KEY != ''
+  #     uses: google-github-actions/auth@v2
+  #     with:
+  #       credentials_json: ${{ secrets.GCP_SA_KEY }}
+  #
+  #   - name: Set up Google Cloud SDK
+  #     if: env.GCP_SA_KEY != ''
+  #     uses: google-github-actions/setup-gcloud@v2
+  #     with:
+  #       project_id: ${{ env.GCP_PROJECT_ID }}
+  #       install_components: 'gke-gcloud-auth-plugin'
+  #
+  #   - name: Setup Terraform
+  #     if: env.GCP_SA_KEY != ''
+  #     uses: hashicorp/setup-terraform@v3
+  #     with:
+  #       terraform_version: 1.5.0
+  #
+  #   - name: 'Deploy Infrastructure - Step 1: Basic Infrastructure'
+  #     if: env.GCP_SA_KEY != ''
+  #     run: |
+  #       echo "🏗️ Step 1: Deploying basic infrastructure (APIs, networking, GKE)..."
+  #       # Export Terraform environment variables
+  #       export TF_VAR_gcp_project_id="${{ env.GCP_PROJECT_ID }}"
+  #       export TF_VAR_gcp_region="${{ env.GCP_REGION }}"
+  #       export TF_VAR_environment="${{ env.ENVIRONMENT }}"
+  #       chmod +x ./scripts/create_infra.sh
+  #       ./scripts/create_infra.sh
+  #       echo "✅ Basic infrastructure deployment complete"
+  #
+  #   - name: 'Deploy Infrastructure - Step 2: Databases'
+  #     if: env.GCP_SA_KEY != ''
+  #     run: |
+  #       echo "🗄️ Step 2: Deploying databases and related secrets..."
+  #       # Export Terraform environment variables
+  #       export TF_VAR_gcp_project_id="${{ env.GCP_PROJECT_ID }}"
+  #       export TF_VAR_gcp_region="${{ env.GCP_REGION }}"
+  #       export TF_VAR_environment="${{ env.ENVIRONMENT }}"
+  #       chmod +x ./scripts/create_db.sh
+  #       ./scripts/create_db.sh
+  #       echo "✅ Database deployment complete"
+  #
+  #   - name: 'Deploy Infrastructure - Step 3: Kubernetes Secrets'
+  #     if: env.GCP_SA_KEY != ''
+  #     run: |
+  #       echo "🔑 Step 3: Managing Kubernetes secrets..."
+  #       # Export Terraform environment variables
+  #       export TF_VAR_gcp_project_id="${{ env.GCP_PROJECT_ID }}"
+  #       export TF_VAR_gcp_region="${{ env.GCP_REGION }}"
+  #       export TF_VAR_environment="${{ env.ENVIRONMENT }}"
+  #       # Set required environment variables for GHCR secrets
+  #       export GHCR_OWNER="${{ github.repository_owner }}"
+  #       export GHCR_TOKEN="${{ secrets.GHCR_TOKEN }}"
+  #       export GHCR_TOKEN_SECRET_ID="ghcr-pat"
+  #       chmod +x ./scripts/create_secrets.sh
+  #       ./scripts/create_secrets.sh
+  #       echo "✅ Kubernetes secrets deployment complete"
+  #
+  #   - name: Infrastructure (Test Mode)
+  #     if: env.GCP_SA_KEY == ''
+  #     run: |
+  #       echo "🔧 GCP credentials not configured, skipping infrastructure deployment..."
+  #       echo "Would deploy:"
+  #       echo "  - GKE Cluster"
+  #       echo "  - VPC and Networking"
+  #       echo "  - Cloud SQL databases"
+  #       echo "  - Secret Manager"
+  #       echo "✅ Infrastructure test mode complete"
 
   # Job 3: Deploy Observability
   deploy-observability:
     name: Deploy Observability
     runs-on: ubuntu-latest
-    needs: [deploy-infrastructure]
-    if: ${{ success() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && !cancelled() }}
+    # needs: [deploy-infrastructure]  # COMMENTED OUT - deploy-infrastructure is disabled
+    if: ${{ always() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && !cancelled() }}
     environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
     steps:
     - name: Checkout code

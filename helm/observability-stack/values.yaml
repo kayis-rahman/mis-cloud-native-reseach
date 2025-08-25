@@ -58,6 +58,10 @@ grafana:
     user: "admin"
     password: "admin123"  # Change this in production
 
+  # Dashboard configuration
+  dashboards:
+    enabled: true
+
   resources:
     requests:
       memory: "128Mi"  # Increased from 64Mi for better performance
