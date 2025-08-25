@@ -193,6 +193,10 @@ jobs:
       if: env.GCP_SA_KEY != ''
       run: |
         echo "🏗️ Step 1: Deploying basic infrastructure (APIs, networking, GKE)..."
+        # Export Terraform environment variables
+        export TF_VAR_gcp_project_id="${{ env.GCP_PROJECT_ID }}"
+        export TF_VAR_gcp_region="${{ env.GCP_REGION }}"
+        export TF_VAR_environment="${{ env.ENVIRONMENT }}"
         chmod +x ./scripts/create_infra.sh
         ./scripts/create_infra.sh
         echo "✅ Basic infrastructure deployment complete"
@@ -201,6 +205,10 @@ jobs:
       if: env.GCP_SA_KEY != ''
       run: |
         echo "🗄️ Step 2: Deploying databases and related secrets..."
+        # Export Terraform environment variables
+        export TF_VAR_gcp_project_id="${{ env.GCP_PROJECT_ID }}"
+        export TF_VAR_gcp_region="${{ env.GCP_REGION }}"
+        export TF_VAR_environment="${{ env.ENVIRONMENT }}"
         chmod +x ./scripts/create_db.sh
         ./scripts/create_db.sh
         echo "✅ Database deployment complete"
@@ -209,11 +217,15 @@ jobs:
       if: env.GCP_SA_KEY != ''
       run: |
         echo "🔑 Step 3: Managing Kubernetes secrets..."
-        chmod +x ./scripts/create_secrets.sh
+        # Export Terraform environment variables
+        export TF_VAR_gcp_project_id="${{ env.GCP_PROJECT_ID }}"
+        export TF_VAR_gcp_region="${{ env.GCP_REGION }}"
+        export TF_VAR_environment="${{ env.ENVIRONMENT }}"
         # Set required environment variables for GHCR secrets
         export GHCR_OWNER="${{ github.repository_owner }}"
         export GHCR_TOKEN="${{ secrets.GHCR_TOKEN }}"
         export GHCR_TOKEN_SECRET_ID="ghcr-pat"
+        chmod +x ./scripts/create_secrets.sh
         ./scripts/create_secrets.sh
         echo "✅ Kubernetes secrets deployment complete"
 
