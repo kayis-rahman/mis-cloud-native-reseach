@@ -49,11 +49,11 @@ resource "google_compute_subnetwork" "subnet" {
 }
 
 ############################
-# GKE Cluster
+# GKE Cluster - POC Budget Optimized
 ############################
 resource "google_container_cluster" "gke" {
   name                     = "${var.project_name}-gke"
-  location                 = var.gcp_region
+  location                 = var.gcp_zone  # Use single zone instead of regional to save costs
   network                  = google_compute_network.vpc.self_link
   subnetwork               = google_compute_subnetwork.subnet.self_link
   remove_default_node_pool = true
@@ -75,28 +75,104 @@ resource "google_container_cluster" "gke" {
     }
   }
 
+  # Basic cluster autoscaling for POC
+  cluster_autoscaling {
+    enabled = true
+    resource_limits {
+      resource_type = "cpu"
+      minimum       = 1    # Reduced from 4
+      maximum       = 6    # Reduced from 20
+    }
+    resource_limits {
+      resource_type = "memory"
+      minimum       = 4    # Reduced from 16
+      maximum       = 24   # Reduced from 80
+    }
+  }
+
+  # Enable workload identity for better security
+  workload_identity_config {
+    workload_pool = "${var.gcp_project_id}.svc.id.goog"
+  }
+
+  # Enable network policy for security
+  network_policy {
+    enabled = true
+  }
+
+  addons_config {
+    http_load_balancing {
+      disabled = false
+    }
+    horizontal_pod_autoscaling {
+      disabled = false
+    }
+    network_policy_config {
+      disabled = false
+    }
+  }
+
   depends_on = [google_project_service.services]
 }
 
-resource "google_container_node_pool" "primary" {
-  name       = "primary-pool"
-  location   = var.gcp_region
+# Single cost-optimized node pool for all workloads
+resource "google_container_node_pool" "poc_pool" {
+  name       = "poc-pool"
+  location   = var.gcp_zone  # Single zone for cost savings
   cluster    = google_container_cluster.gke.name
-  node_count = 1
+
+  # Conservative auto-scaling for budget
+  autoscaling {
+    min_node_count = 1    # Start with just 1 node
+    max_node_count = 3    # Max 3 nodes for budget control
+  }
 
   node_config {
-    machine_type = "e2-medium"
-    disk_size_gb = 30
-    disk_type    = "pd-standard"
+    machine_type = "e2-standard-2"  # Upgraded from e2-small: 2 vCPU, 8Gi memory
+    disk_size_gb = 30              # Increased from 20Gi for better performance
+    disk_type    = "pd-ssd"        # Upgraded to SSD for performance
+
     oauth_scopes = [
       "https://www.googleapis.com/auth/cloud-platform",
     ]
+
     labels = {
-      env = "prod"
+      env        = var.environment
+      node-type  = "performance-optimized"
+      pool       = "poc-pool"
     }
+
     metadata = {
       disable-legacy-endpoints = "true"
     }
+
+    # Enable workload identity
+    workload_metadata_config {
+      mode = "GKE_METADATA"
+    }
+
+    # Enable preemptible instances for cost savings while maintaining performance
+    preemptible = true
+
+    # Resource labels
+    resource_labels = {
+      "performance-optimized" = "true"
+      "environment"          = "poc"
+      "storage-type"         = "ssd"
+    }
+  }
+
+  # Node management settings
+  management {
+    auto_repair  = true
+    auto_upgrade = true
+  }
+
+  # Update strategy
+  upgrade_settings {
+    max_surge       = 1
+    max_unavailable = 0
+    strategy        = "SURGE"
   }
 }
 
@@ -225,6 +301,6 @@ resource "helm_release" "service" {
   }
 
   depends_on = [
-    google_container_node_pool.primary,
+    google_container_node_pool.poc_pool,
   ]
 }

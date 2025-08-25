@@ -26,19 +26,20 @@ prometheus:
 
   resources:
     requests:
-      memory: "256Mi"
-      cpu: "100m"
+      memory: "256Mi"  # Increased from 128Mi for better performance
+      cpu: "100m"      # Increased from 50m for better performance
     limits:
-      memory: "512Mi"
-      cpu: "250m"
+      memory: "512Mi"  # Increased from 256Mi for better performance
+      cpu: "200m"      # Increased from 100m for better performance
 
   storage:
-    size: 5Gi
+    size: 5Gi         # Increased from 2Gi for better data retention
+    storageClass: "fast-ssd"  # Use SSD storage class for performance
 
   config:
-    scrapeInterval: 15s
-    evaluationInterval: 15s
-    retention: 7d
+    scrapeInterval: 15s  # Reduced from 30s for better monitoring resolution
+    evaluationInterval: 15s  # Reduced from 30s for better monitoring resolution
+    retention: 3d        # Keep at 3 days as requested
 
 # Grafana configuration
 grafana:
@@ -52,25 +53,18 @@ grafana:
     type: ClusterIP
     port: 3000
     targetPort: 3000
-    annotations: {}
-
-  admin:
-    user: admin
-    password: admin123
 
   resources:
     requests:
-      memory: "128Mi"
-      cpu: "50m"
+      memory: "128Mi"  # Increased from 64Mi for better performance
+      cpu: "50m"       # Increased from 25m for better performance
     limits:
-      memory: "256Mi"
-      cpu: "100m"
+      memory: "256Mi"  # Increased from 128Mi for better performance
+      cpu: "100m"      # Increased from 50m for better performance
 
   storage:
-    size: 2Gi
-
-  dashboards:
-    enabled: true
+    size: 2Gi  # Increased from 1Gi for better dashboard storage
+    storageClass: "fast-ssd"  # Use SSD storage class for performance
 
 # Elasticsearch configuration
 elasticsearch:

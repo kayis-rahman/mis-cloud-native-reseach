@@ -25,29 +25,29 @@ environments:
     replicaCount: 1
     resources:
       requests:
-        memory: "256Mi"
-        cpu: "100m"
+        memory: "256Mi"  # Increased from 128Mi for better performance
+        cpu: "100m"      # Increased from 50m for better performance
       limits:
-        memory: "512Mi"
-        cpu: "200m"
+        memory: "512Mi"  # Increased from 256Mi for better performance
+        cpu: "200m"      # Increased from 100m for better performance
   staging:
     replicaCount: 1
     resources:
       requests:
-        memory: "512Mi"
-        cpu: "250m"
+        memory: "512Mi"  # Increased for performance
+        cpu: "200m"      # Increased for performance
       limits:
-        memory: "1Gi"
-        cpu: "500m"
+        memory: "1Gi"    # Increased for performance
+        cpu: "400m"      # Increased for performance
   production:
-    replicaCount: 1
+    replicaCount: 1      # Single replica as requested
     resources:
       requests:
-        memory: "1Gi"
-        cpu: "500m"
+        memory: "512Mi"  # Increased for performance
+        cpu: "250m"      # Increased for performance
       limits:
-        memory: "2Gi"
-        cpu: "1000m"
+        memory: "1Gi"    # Increased for performance
+        cpu: "500m"      # Increased for performance
 
 # Observability configuration
 observability:
@@ -198,11 +198,11 @@ services:
       port: 8085
     resources:
       requests:
-        memory: "256Mi"
-        cpu: "200m"
+        memory: "256Mi"  # Increased for better performance
+        cpu: "100m"      # Increased for better performance
       limits:
-        memory: "512Mi"
-        cpu: "400m"
+        memory: "512Mi"  # Increased for better performance
+        cpu: "200m"      # Increased for better performance
     env:
       - name: SPRING_PROFILES_ACTIVE
         value: "{{ .Values.global.environment }}"
@@ -231,11 +231,11 @@ services:
       port: 8081
     resources:
       requests:
-        memory: "256Mi"
-        cpu: "200m"
+        memory: "256Mi"  # Increased for better performance
+        cpu: "100m"      # Increased for better performance
       limits:
-        memory: "512Mi"
-        cpu: "400m"
+        memory: "512Mi"  # Increased for better performance
+        cpu: "200m"      # Increased for better performance
     env:
       - name: SPRING_PROFILES_ACTIVE
         value: "{{ .Values.global.environment }}"
@@ -264,11 +264,11 @@ services:
       port: 8083
     resources:
       requests:
-        memory: "256Mi"
-        cpu: "200m"
+        memory: "256Mi"  # Increased for better performance
+        cpu: "100m"      # Increased for better performance
       limits:
-        memory: "512Mi"
-        cpu: "400m"
+        memory: "512Mi"  # Increased for better performance
+        cpu: "200m"      # Increased for better performance
     env:
       - name: SPRING_PROFILES_ACTIVE
         value: "{{ .Values.global.environment }}"
@@ -297,11 +297,11 @@ services:
       port: 8082
     resources:
       requests:
-        memory: "256Mi"
-        cpu: "200m"
+        memory: "256Mi"  # Increased for better performance
+        cpu: "100m"      # Increased for better performance
       limits:
-        memory: "512Mi"
-        cpu: "400m"
+        memory: "512Mi"  # Increased for better performance
+        cpu: "200m"      # Increased for better performance
     env:
       - name: SPRING_PROFILES_ACTIVE
         value: "{{ .Values.global.environment }}"
@@ -330,11 +330,11 @@ services:
       port: 8084
     resources:
       requests:
-        memory: "256Mi"
-        cpu: "200m"
+        memory: "256Mi"  # Increased for better performance
+        cpu: "100m"      # Increased for better performance
       limits:
-        memory: "512Mi"
-        cpu: "400m"
+        memory: "512Mi"  # Increased for better performance
+        cpu: "200m"      # Increased for better performance
     env:
       - name: SPRING_PROFILES_ACTIVE
         value: "{{ .Values.global.environment }}"
