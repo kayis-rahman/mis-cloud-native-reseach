@@ -19,6 +19,12 @@ spec:
       labels:
         app.kubernetes.io/instance: {{ $.Release.Name }}
         app.kubernetes.io/component: {{ $key }}
+      {{- if $svc.annotations }}
+      annotations:
+        {{- range $annotationKey, $annotationValue := $svc.annotations }}
+        {{ $annotationKey }}: {{ $annotationValue | quote }}
+        {{- end }}
+      {{- end }}
     spec:
       imagePullSecrets:
         - name: ghcr-creds

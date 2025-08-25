@@ -1,0 +1,46 @@
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+    metrics:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: ${spring.application.name}
+      service: identity-service
+    web:
+      server:
+        request:
+          autotime:
+            enabled: true
+
+opentracing:
+  jaeger:
+    service-name: ${spring.application.name}
+    sampler:
+      type: const
+      param: 1
+    reporter:
+      log-spans: true
+      max-queue-size: 100
+      flush-interval: 1000
+    udp-sender:
+      host: jaeger-agent
+      port: 6831
+
+logging:
+  level:
+    com.sparkage: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{traceId:-},%X{spanId:-}] %logger{36} - %msg%n"
+
+spring:
+  application:
+    name: identity-service

@@ -1,0 +1,146 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Business Metrics Dashboard",
+    "tags": ["business", "metrics", "microservices"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Total Product Operations",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "sum(increase(product_operations_total[1h]))",
+            "legendFormat": "Total Operations"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "unit": "short"
+          }
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "Product Operations by Type",
+        "type": "piechart",
+        "targets": [
+          {
+            "expr": "sum by (operation) (increase(product_operations_total[1h]))",
+            "legendFormat": "{{operation}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 6, "x": 6, "y": 0}
+      },
+      {
+        "id": 3,
+        "title": "Order Processing Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(order_processing_total[5m])",
+            "legendFormat": "Orders/sec"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 6, "x": 12, "y": 0}
+      },
+      {
+        "id": 4,
+        "title": "Payment Success Rate",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "rate(payment_transactions_total{status=\"success\"}[5m]) / rate(payment_transactions_total[5m]) * 100",
+            "legendFormat": "Success Rate %"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 100,
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "yellow", "value": 90},
+                {"color": "green", "value": 95}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 18, "y": 0}
+      },
+      {
+        "id": 5,
+        "title": "Active Shopping Carts",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "cart_active_sessions",
+            "legendFormat": "Active Carts"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+      },
+      {
+        "id": 6,
+        "title": "Average Order Value",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(order_total_value_sum[5m]) / rate(order_total_value_count[5m])",
+            "legendFormat": "Average Order Value"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+      },
+      {
+        "id": 7,
+        "title": "User Authentication Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(identity_auth_attempts_total[5m])",
+            "legendFormat": "{{result}} - Auth Attempts/sec"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 16}
+      },
+      {
+        "id": 8,
+        "title": "Top Products by Views",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "topk(10, sum by (product_id) (increase(product_views_total[1h])))",
+            "legendFormat": "Product {{product_id}}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24}
+      },
+      {
+        "id": 9,
+        "title": "Service Response Time Comparison",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "{{service}} - 95th percentile"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24}
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "10s"
+  }
+}
+

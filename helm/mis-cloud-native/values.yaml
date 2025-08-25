@@ -10,6 +10,24 @@ global:
     # If true, expose api-gateway at root path "/" instead of "/api-gateway"
     gatewayRoot: false
 
+# Observability configuration
+observability:
+  enabled: true
+  prometheus:
+    enabled: true
+    namespace: observability
+  grafana:
+    enabled: true
+    namespace: observability
+  elk:
+    enabled: true
+    namespace: observability
+  jaeger:
+    enabled: true
+    namespace: observability
+  # Enable observability profile for all services
+  profileActive: true
+
 # Define microservices here
 services:
   api-gateway:
@@ -25,7 +43,9 @@ services:
     resources: {}
     security:
       apiKeys: "default-key-please-change"
-    env: []
+    env:
+      - name: SPRING_PROFILES_ACTIVE
+        value: "observability"
     livenessProbe:
       path: /actuator/health
       initialDelaySeconds: 20
@@ -34,6 +54,11 @@ services:
       path: /actuator/health
       initialDelaySeconds: 10
       periodSeconds: 10
+    # Observability annotations
+    annotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/path: "/actuator/prometheus"
+      prometheus.io/port: "8080"
 
   identity:
     enabled: true
@@ -46,15 +71,21 @@ services:
       type: ClusterIP
       port: 9000
     resources: {}
-    env: []
+    env:
+      - name: SPRING_PROFILES_ACTIVE
+        value: "observability"
     livenessProbe:
       path: /actuator/health/liveness
-      initialDelaySeconds: 20
+      initialDelaySeconds: 30
       periodSeconds: 10
     readinessProbe:
       path: /actuator/health/readiness
-      initialDelaySeconds: 10
+      initialDelaySeconds: 20
       periodSeconds: 10
+    annotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/path: "/actuator/prometheus"
+      prometheus.io/port: "9000"
 
   product:
     enabled: true
@@ -67,7 +98,9 @@ services:
       type: ClusterIP
       port: 9001
     resources: {}
-    env: []
+    env:
+      - name: SPRING_PROFILES_ACTIVE
+        value: "observability"
     livenessProbe:
       path: /actuator/health/liveness
       initialDelaySeconds: 20
@@ -76,6 +109,10 @@ services:
       path: /actuator/health/readiness
       initialDelaySeconds: 10
       periodSeconds: 10
+    annotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/path: "/actuator/prometheus"
+      prometheus.io/port: "9001"
 
   cart:
     enabled: true
@@ -88,7 +125,9 @@ services:
       type: ClusterIP
       port: 9002
     resources: {}
-    env: []
+    env:
+      - name: SPRING_PROFILES_ACTIVE
+        value: "observability"
     livenessProbe:
       path: /actuator/health/liveness
       initialDelaySeconds: 20
@@ -97,6 +136,10 @@ services:
       path: /actuator/health/readiness
       initialDelaySeconds: 10
       periodSeconds: 10
+    annotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/path: "/actuator/prometheus"
+      prometheus.io/port: "9002"
 
   order:
     enabled: true
@@ -109,7 +152,9 @@ services:
       type: ClusterIP
       port: 9003
     resources: {}
-    env: []
+    env:
+      - name: SPRING_PROFILES_ACTIVE
+        value: "observability"
     livenessProbe:
       path: /actuator/health/liveness
       initialDelaySeconds: 20
@@ -118,6 +163,10 @@ services:
       path: /actuator/health/readiness
       initialDelaySeconds: 10
       periodSeconds: 10
+    annotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/path: "/actuator/prometheus"
+      prometheus.io/port: "9003"
 
   payment:
     enabled: true
@@ -130,7 +179,9 @@ services:
       type: ClusterIP
       port: 9004
     resources: {}
-    env: []
+    env:
+      - name: SPRING_PROFILES_ACTIVE
+        value: "observability"
     livenessProbe:
       path: /actuator/health/liveness
       initialDelaySeconds: 20
@@ -139,3 +190,7 @@ services:
       path: /actuator/health/readiness
       initialDelaySeconds: 10
       periodSeconds: 10
+    annotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/path: "/actuator/prometheus"
+      prometheus.io/port: "9004"
