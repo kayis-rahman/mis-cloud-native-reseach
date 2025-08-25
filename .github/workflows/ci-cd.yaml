@@ -100,8 +100,8 @@ jobs:
 #          gcloud auth activate-service-account --key-file="$GOOGLE_APPLICATION_CREDENTIALS"
 #
 #          # Set the project
-#          echo "📋 Setting project to: ${{ secrets.GCP_PROJECT_ID }}"
-#          gcloud config set project "${{ secrets.GCP_PROJECT_ID }}"
+#          echo "📋 Setting project to: ${{ secrets.GCP_PROJECT }}"
+#          gcloud config set project "${{ secrets.GCP_PROJECT }}"
 #
 #        else
 #          echo "❌ No credentials file found from auth action"
@@ -120,8 +120,8 @@ jobs:
 #
 #          # Test project access
 #          echo "🔍 Testing project access..."
-#          if gcloud projects describe "${{ secrets.GCP_PROJECT_ID }}" --quiet; then
-#            echo "✅ Successfully accessed project: ${{ secrets.GCP_PROJECT_ID }}"
+#          if gcloud projects describe "${{ secrets.GCP_PROJECT }}" --quiet; then
+#            echo "✅ Successfully accessed project: ${{ secrets.GCP_PROJECT }}"
 #          else
 #            echo "❌ Failed to access project. Check service account permissions."
 #            exit 1
@@ -364,7 +364,7 @@ jobs:
           gcloud auth activate-service-account --key-file="$GOOGLE_APPLICATION_CREDENTIALS"
           
           # Set the project with fallback default if secret not set
-          PROJECT_ID="${{ secrets.GCP_PROJECT_ID }}"
+          PROJECT_ID="${{ secrets.GCP_PROJECT }}"
           if [ -z "$PROJECT_ID" ]; then PROJECT_ID="mis-cloud-native-research"; fi
           echo "📋 Setting project to: $PROJECT_ID"
           gcloud config set project "$PROJECT_ID"
@@ -377,7 +377,7 @@ jobs:
     - name: Set up Google Cloud SDK
       uses: google-github-actions/setup-gcloud@v2
       with:
-        project_id: ${{ secrets.GCP_PROJECT_ID }}
+        project_id: ${{ secrets.GCP_PROJECT }}
         install_components: 'gke-gcloud-auth-plugin'
 
     - name: Configure kubectl
@@ -387,7 +387,7 @@ jobs:
         # Configure cluster parameters (static)
         CLUSTER_NAME="mis-research-cloud-native-gke"
         CLUSTER_LOCATION="us-central1"
-        PROJECT_ID="${{ secrets.GCP_PROJECT_ID }}"
+        PROJECT_ID="${{ secrets.GCP_PROJECT }}"
         
         echo "  Cluster: $CLUSTER_NAME"
         echo "  Location: $CLUSTER_LOCATION"
@@ -473,7 +473,7 @@ jobs:
     - name: Set up Google Cloud SDK
       uses: google-github-actions/setup-gcloud@v2
       with:
-        project_id: ${{ secrets.GCP_PROJECT_ID }}
+        project_id: ${{ secrets.GCP_PROJECT }}
         install_components: 'gke-gcloud-auth-plugin'
 
     - name: Configure kubectl
@@ -483,7 +483,7 @@ jobs:
         # Configure cluster parameters (static)
         CLUSTER_NAME="mis-research-cloud-native-gke"
         CLUSTER_LOCATION="us-central1"
-        PROJECT_ID="${{ secrets.GCP_PROJECT_ID }}"
+        PROJECT_ID="${{ secrets.GCP_PROJECT }}"
         
         echo "  Cluster: $CLUSTER_NAME"
         echo "  Location: $CLUSTER_LOCATION"
