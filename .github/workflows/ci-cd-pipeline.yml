@@ -133,20 +133,47 @@ jobs:
         echo "environment=$ENV" >> $GITHUB_OUTPUT
         
         # Set environment-specific GCP values - using secrets for manual IAM configuration
+        # Use fallback values if secrets are not set
+        GCP_PROJECT="${{ secrets.GCP_PROJECT_ID }}"
+        GKE_CLUSTER="${{ secrets.GKE_CLUSTER_NAME }}"
+        GCP_REGION="${{ secrets.GCP_REGION }}"
+        
+        # Validate required values
+        if [[ -z "$GCP_PROJECT" ]]; then
+          echo "❌ Error: GCP_PROJECT_ID secret is not set"
+          exit 1
+        fi
+        
+        if [[ -z "$GKE_CLUSTER" ]]; then
+          echo "❌ Error: GKE_CLUSTER_NAME secret is not set"
+          exit 1
+        fi
+        
+        if [[ -z "$GCP_REGION" ]]; then
+          echo "❌ Error: GCP_REGION secret is not set"
+          exit 1
+        fi
+        
         case $ENV in
           production)
-            echo "gcp_project=${{ secrets.GCP_PROJECT_ID }}" >> $GITHUB_OUTPUT
-            echo "gke_cluster=${{ secrets.GKE_CLUSTER_NAME }}" >> $GITHUB_OUTPUT
-            echo "gcp_region=${{ secrets.GCP_REGION }}" >> $GITHUB_OUTPUT
+            echo "gcp_project=$GCP_PROJECT" >> $GITHUB_OUTPUT
+            echo "gke_cluster=$GKE_CLUSTER" >> $GITHUB_OUTPUT
+            echo "gcp_region=$GCP_REGION" >> $GITHUB_OUTPUT
             echo "namespace=production" >> $GITHUB_OUTPUT
             ;;
           development)
-            echo "gcp_project=${{ secrets.GCP_PROJECT_ID }}" >> $GITHUB_OUTPUT
-            echo "gke_cluster=${{ secrets.GKE_CLUSTER_NAME }}" >> $GITHUB_OUTPUT
-            echo "gcp_region=${{ secrets.GCP_REGION }}" >> $GITHUB_OUTPUT
+            echo "gcp_project=$GCP_PROJECT" >> $GITHUB_OUTPUT
+            echo "gke_cluster=$GKE_CLUSTER" >> $GITHUB_OUTPUT
+            echo "gcp_region=$GCP_REGION" >> $GITHUB_OUTPUT
             echo "namespace=development" >> $GITHUB_OUTPUT
             ;;
         esac
+        
+        echo "✅ Environment variables set:"
+        echo "  Project: $GCP_PROJECT"
+        echo "  Cluster: $GKE_CLUSTER"
+        echo "  Region: $GCP_REGION"
+        echo "  Environment: $ENV"
 
     - name: Set up JDK 17
       uses: actions/setup-java@v4

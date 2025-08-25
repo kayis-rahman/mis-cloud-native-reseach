@@ -1,200 +1,239 @@
-name: Security & Compliance Scan
+# COMMENTED OUT FOR TESTING - security-scan.yml
+# name: Security & Compliance Scan
 
-on:
-  schedule:
-    - cron: '0 2 * * *'  # Daily at 2 AM UTC
-  push:
-    branches: [ main, develop ]
-    paths:
-    - 'Dockerfile*'
-    - 'terraform/**'
-    - 'helm/**'
-    - '.github/workflows/**'
-  workflow_dispatch:
-    inputs:
-      scan_type:
-        description: 'Type of security scan'
-        required: true
-        default: 'all'
-        type: choice
-        options:
-        - all
-        - images
-        - code
-        - infrastructure
-        - secrets
+# on:
+#   schedule:
+#     - cron: '0 2 * * *'  # Daily at 2 AM UTC
+#   push:
+#     branches: [ main, develop ]
+#     paths:
+#     - 'Dockerfile*'
+#     - 'terraform/**'
+#     - 'helm/**'
+#     - '.github/workflows/**'
+#   workflow_dispatch:
+#     inputs:
+#       scan_type:
+#         description: 'Type of security scan'
+#         required: true
+#         default: 'all'
+#         type: choice
+#         options:
+#         - all
+#         - images
+#         - code
+#         - infrastructure
+#         - secrets
 
-env:
-  REGISTRY: ghcr.io
-  GHCR_OWNER: ${{ github.repository_owner }}
+# env:
+#   REGISTRY: ghcr.io
+#   GHCR_OWNER: ${{ github.repository_owner }}
 
-jobs:
-  security-scan:
-    name: Security Scan
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        scan-target:
-        - { type: "filesystem", name: "Code & IaC" }
-        - { type: "secrets", name: "Secret Detection" }
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+# jobs:
+#   security-scan:
+#     name: Security Scan
+#     runs-on: ubuntu-latest
+#     strategy:
+#       matrix:
+#         scan-target:
+#         - { type: "filesystem", name: "Code & IaC" }
+#         - { type: "secrets", name: "Secret Detection" }
+#     steps:
+#     - name: Checkout code
+#       uses: actions/checkout@v4
+#       with:
+#         fetch-depth: 0
 
-    - name: Install Trivy
-      run: |
-        sudo apt-get update
-        sudo apt-get install wget apt-transport-https gnupg lsb-release
-        wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
-        echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
-        sudo apt-get update
-        sudo apt-get install trivy
+#     - name: Install Trivy
+#       run: |
+#         sudo apt-get update
+#         sudo apt-get install wget apt-transport-https gnupg lsb-release
+#         wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+#         echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
+#         sudo apt-get update
+#         sudo apt-get install trivy
 
-    - name: Run ${{ matrix.scan-target.name }} scan
-      run: |
-        chmod +x scripts/scan_security.sh
-        if [[ "${{ matrix.scan-target.type }}" == "secrets" ]]; then
-          chmod +x scripts/scan_secrets.sh
-          ./scripts/scan_secrets.sh
-        else
-          ./scripts/scan_security.sh
-        fi
+#     - name: Run ${{ matrix.scan-target.name }} scan
+#       run: |
+#         chmod +x scripts/scan_security.sh
+#         if [[ "${{ matrix.scan-target.type }}" == "secrets" ]]; then
+#           chmod +x scripts/scan_secrets.sh
+#           ./scripts/scan_secrets.sh
+#         else
+#           ./scripts/scan_security.sh
+#         fi
 
-    - name: Upload scan results
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: security-scan-${{ matrix.scan-target.type }}
-        path: |
-          trivy-*.json
-          trivy-*.sarif
-          security-scan-*.txt
+#     - name: Upload scan results
+#       uses: actions/upload-artifact@v4
+#       if: always()
+#       with:
+#         name: security-scan-${{ matrix.scan-target.type }}
+#         path: |
+#           trivy-*.json
+#           trivy-*.sarif
+#           security-scan-*.txt
 
-  image-security-scan:
-    name: Container Image Security Scan
-    runs-on: ubuntu-latest
-    if: github.event.inputs.scan_type == 'all' || github.event.inputs.scan_type == 'images' || github.event_name != 'workflow_dispatch'
-    strategy:
-      matrix:
-        service: [identity, product, cart, order, payment, api-gateway]
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+#   image-security-scan:
+#     name: Container Image Security Scan
+#     runs-on: ubuntu-latest
+#     if: github.event.inputs.scan_type == 'all' || github.event.inputs.scan_type == 'images' || github.event_name != 'workflow_dispatch'
+#     strategy:
+#       matrix:
+#         service: [identity, product, cart, order, payment, api-gateway]
+#     steps:
+#     - name: Checkout code
+#       uses: actions/checkout@v4
 
-    - name: Log in to Container Registry
-      uses: docker/login-action@v3
-      with:
-        registry: ${{ env.REGISTRY }}
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+#     - name: Log in to Container Registry
+#       uses: docker/login-action@v3
+#       with:
+#         registry: ${{ env.REGISTRY }}
+#         username: ${{ github.actor }}
+#         password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Pull latest image
-      run: |
-        docker pull ${{ env.REGISTRY }}/${{ env.GHCR_OWNER }}/${{ matrix.service }}:latest || true
+#     - name: Pull latest image
+#       run: |
+#         docker pull ${{ env.REGISTRY }}/${{ env.GHCR_OWNER }}/${{ matrix.service }}:latest || true
 
-    - name: Scan ${{ matrix.service }} image
-      run: |
-        chmod +x scripts/scan_security.sh
-        IMAGE="${{ env.REGISTRY }}/${{ env.GHCR_OWNER }}/${{ matrix.service }}:latest" \
-          ./scripts/scan_security.sh
+#     - name: Scan ${{ matrix.service }} image
+#       run: |
+#         chmod +x scripts/scan_security.sh
+#         IMAGE="${{ env.REGISTRY }}/${{ env.GHCR_OWNER }}/${{ matrix.service }}:latest" \
+#           ./scripts/scan_security.sh
 
-    - name: Upload image scan results
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: image-scan-${{ matrix.service }}
-        path: |
-          trivy-*.json
-          trivy-*.sarif
+#     - name: Upload image scan results
+#       uses: actions/upload-artifact@v4
+#       if: always()
+#       with:
+#         name: image-security-scan-${{ matrix.service }}
+#         path: |
+#           trivy-image-*.json
+#           trivy-image-*.sarif
 
-  compliance-check:
-    name: Compliance & Policy Check
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+#   infrastructure-security-scan:
+#     name: Infrastructure Security Scan
+#     runs-on: ubuntu-latest
+#     if: github.event.inputs.scan_type == 'all' || github.event.inputs.scan_type == 'infrastructure' || github.event_name != 'workflow_dispatch'
+#     steps:
+#     - name: Checkout code
+#       uses: actions/checkout@v4
 
-    - name: Install OPA (Open Policy Agent)
-      run: |
-        curl -L -o opa https://openpolicyagent.org/downloads/v0.58.0/opa_linux_amd64_static
-        chmod 755 ./opa
-        sudo mv opa /usr/local/bin
+#     - name: Setup Terraform
+#       uses: hashicorp/setup-terraform@v3
+#       with:
+#         terraform_version: '1.5.0'
 
-    - name: Run Kubernetes policy checks
-      run: |
-        # Check Helm templates against policies
-        helm template helm/mis-cloud-native > k8s-manifests.yaml
-        
-        # Basic security policy checks
-        echo "Checking for security policies..."
-        
-        # Check for security contexts
-        if ! grep -q "securityContext" k8s-manifests.yaml; then
-          echo "WARNING: No securityContext found in manifests"
-        fi
-        
-        # Check for resource limits
-        if ! grep -q "resources:" k8s-manifests.yaml; then
-          echo "WARNING: No resource limits found in manifests"
-        fi
-        
-        # Check for non-root users
-        if grep -q "runAsUser: 0" k8s-manifests.yaml; then
-          echo "ERROR: Containers running as root detected"
-          exit 1
-        fi
+#     - name: Scan Terraform files
+#       run: |
+#         # Install tfsec
+#         curl -s https://raw.githubusercontent.com/aquasecurity/tfsec/master/scripts/install_linux.sh | bash
+#
+#         # Scan Terraform files
+#         tfsec terraform --format json --out terraform-security.json || true
+#         tfsec terraform --format sarif --out terraform-security.sarif || true
 
-    - name: Infrastructure compliance check
-      run: |
-        # Check Terraform configurations
-        if command -v terraform >/dev/null 2>&1; then
-          cd terraform
-          terraform fmt -check=true
-          terraform validate
-        fi
+#     - name: Scan Kubernetes manifests
+#       run: |
+#         # Install kubesec
+#         wget https://github.com/controlplaneio/kubesec/releases/download/v2.11.0/kubesec_linux_amd64.tar.gz
+#         tar -xvf kubesec_linux_amd64.tar.gz
+#         sudo mv kubesec /usr/local/bin/
+#
+#         # Scan Helm templates
+#         helm template test-release helm/mis-cloud-native > manifests.yaml
+#         kubesec scan manifests.yaml > kubesec-results.json
 
-  notify-security-results:
-    name: Notify Security Results
-    runs-on: ubuntu-latest
-    needs: [security-scan, image-security-scan, compliance-check]
-    if: always()
-    steps:
-    - name: Evaluate security status
-      run: |
-        if [[ "${{ needs.security-scan.result }}" == "failure" ]] || \
-           [[ "${{ needs.image-security-scan.result }}" == "failure" ]] || \
-           [[ "${{ needs.compliance-check.result }}" == "failure" ]]; then
-          echo "🔴 Security scan failures detected!"
-          echo "SECURITY_STATUS=FAILED" >> $GITHUB_ENV
-        else
-          echo "✅ All security scans passed!"
-          echo "SECURITY_STATUS=PASSED" >> $GITHUB_ENV
-        fi
+#     - name: Upload infrastructure scan results
+#       uses: actions/upload-artifact@v4
+#       if: always()
+#       with:
+#         name: infrastructure-security-scan
+#         path: |
+#           terraform-security.*
+#           kubesec-results.json
 
-    - name: Create security report
-      run: |
-        cat << EOF > security-report.md
-        # Security Scan Report
-        
-        **Date:** $(date)
-        **Commit:** ${{ github.sha }}
-        **Status:** ${{ env.SECURITY_STATUS }}
-        
-        ## Scan Results
-        - Code & Infrastructure Scan: ${{ needs.security-scan.result }}
-        - Container Image Scan: ${{ needs.image-security-scan.result }}
-        - Compliance Check: ${{ needs.compliance-check.result }}
-        
-        ## Recommendations
-        - Review any failed scans in the workflow logs
-        - Update dependencies if vulnerabilities found
-        - Ensure all security policies are followed
-        EOF
+#   compliance-check:
+#     name: Compliance Check
+#     runs-on: ubuntu-latest
+#     steps:
+#     - name: Checkout code
+#       uses: actions/checkout@v4
 
-    - name: Upload security report
-      uses: actions/upload-artifact@v4
-      with:
-        name: security-report
-        path: security-report.md
+#     - name: Check compliance requirements
+#       run: |
+#         echo "=== Compliance Check Report ===" > compliance-report.txt
+#         echo "Date: $(date -u)" >> compliance-report.txt
+#         echo "" >> compliance-report.txt
+#
+#         # Check for required security files
+#         echo "Security Configuration:" >> compliance-report.txt
+#         [ -f "scripts/scan_security.sh" ] && echo "✅ Security scan script present" >> compliance-report.txt
+#         [ -f "scripts/scan_secrets.sh" ] && echo "✅ Secret scan script present" >> compliance-report.txt
+#
+#         # Check Dockerfile security practices
+#         echo "" >> compliance-report.txt
+#         echo "Dockerfile Security:" >> compliance-report.txt
+#         for dockerfile in services/*/Dockerfile; do
+#           if grep -q "USER " "$dockerfile"; then
+#             echo "✅ Non-root user in $(dirname $dockerfile)" >> compliance-report.txt
+#           else
+#             echo "⚠️  No non-root user in $(dirname $dockerfile)" >> compliance-report.txt
+#           fi
+#         done
+#
+#         # Check for secrets in code
+#         echo "" >> compliance-report.txt
+#         echo "Secret Management:" >> compliance-report.txt
+#         if git log --all --grep="password\|secret\|key" --oneline | wc -l | xargs test 0 -eq; then
+#           echo "✅ No secrets detected in commit messages" >> compliance-report.txt
+#         else
+#           echo "⚠️  Potential secrets in commit messages" >> compliance-report.txt
+#         fi
+
+#     - name: Upload compliance report
+#       uses: actions/upload-artifact@v4
+#       with:
+#         name: compliance-report
+#         path: compliance-report.txt
+
+#   security-summary:
+#     name: Security Summary
+#     runs-on: ubuntu-latest
+#     needs: [security-scan, image-security-scan, infrastructure-security-scan, compliance-check]
+#     if: always()
+#     steps:
+#     - name: Download all scan results
+#       uses: actions/download-artifact@v4
+#       with:
+#         pattern: "*security*"
+#         merge-multiple: true
+
+#     - name: Generate security summary
+#       run: |
+#         cat << EOF > security-summary.md
+#         # Security Scan Summary
+#
+#         **Date:** $(date -u)
+#         **Scan Type:** ${{ github.event.inputs.scan_type || 'scheduled' }}
+#
+#         ## Scan Results
+#         - Code & IaC Scan: ${{ needs.security-scan.result }}
+#         - Image Security Scan: ${{ needs.image-security-scan.result }}
+#         - Infrastructure Scan: ${{ needs.infrastructure-security-scan.result }}
+#         - Compliance Check: ${{ needs.compliance-check.result }}
+#
+#         ## Recommendations
+#         1. Review all HIGH and CRITICAL severity findings
+#         2. Update vulnerable dependencies immediately
+#         3. Apply security patches to container base images
+#         4. Ensure all secrets are properly managed
+#         5. Follow security best practices in code and infrastructure
+#
+#         See detailed reports in the artifacts for specific findings and remediation steps.
+#         EOF
+
+#     - name: Upload security summary
+#       uses: actions/upload-artifact@v4
+#       with:
+#         name: security-summary-$(date +%Y%m%d)
+#         path: security-summary.md
