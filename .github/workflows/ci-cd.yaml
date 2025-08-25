@@ -72,7 +72,7 @@ jobs:
       matrix: ${{ fromJson(needs.discover-services.outputs.matrix) }}
     env:
       SERVICE: ${{ matrix.service }}
-      IMAGE: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ github.event.repository.name }}/${{ matrix.service }}:${{ env.SHA }}
+      IMAGE: ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}/${{ matrix.service }}:${{ github.sha }}
     steps:
       - uses: actions/checkout@v4
 
@@ -157,7 +157,7 @@ jobs:
     if: >-
       ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
     env:
-      IMAGE_SHA: ${{ env.SHA }}
+      IMAGE_SHA: ${{ github.sha }}
       NAMESPACE: ${{ secrets.HELM_KUBE_NAMESPACE || 'default' }}
       VALUES_FILE: ${{ github.event.inputs.helm_values_file || 'helm/mis-cloud-native/values-development.yaml' }}
       ENVIRONMENT: ${{ github.event.inputs.environment || 'development' }}
