@@ -42,6 +42,7 @@ env:
   GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID || 'mis-cloud-native-research' }}
   GKE_CLUSTER: ${{ secrets.GKE_CLUSTER_NAME || 'mis-cloud-native-gke' }}
   GCP_REGION: ${{ secrets.GCP_REGION || 'us-central1' }}
+  GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
 
 permissions:
   contents: read
@@ -234,19 +235,19 @@ jobs:
         echo "✅ Helm chart validation successful"
 
     - name: Authenticate to Google Cloud
-      if: env.GCP_SA_KEY != '' && secrets.GCP_SA_KEY != ''
+      if: env.GCP_SA_KEY != ''
       uses: google-github-actions/auth@v2
       with:
         credentials_json: ${{ secrets.GCP_SA_KEY }}
 
     - name: Set up Google Cloud SDK
-      if: env.GCP_SA_KEY != '' && secrets.GCP_SA_KEY != ''
+      if: env.GCP_SA_KEY != ''
       uses: google-github-actions/setup-gcloud@v2
       with:
         project_id: ${{ env.GCP_PROJECT_ID }}
 
     - name: Configure kubectl for GCP
-      if: env.GCP_SA_KEY != '' && secrets.GCP_SA_KEY != ''
+      if: env.GCP_SA_KEY != ''
       run: |
         gcloud components install gke-gcloud-auth-plugin --quiet
         gcloud container clusters get-credentials ${{ env.GKE_CLUSTER }} \
@@ -254,7 +255,7 @@ jobs:
           --project ${{ env.GCP_PROJECT_ID }}
 
     - name: Deploy API Gateway with Helm (Test Mode)
-      if: env.GCP_SA_KEY == '' || secrets.GCP_SA_KEY == ''
+      if: env.GCP_SA_KEY == ''
       run: |
         echo "🔧 GCP credentials not configured, running in test mode..."
         echo "Would deploy API Gateway with:"
@@ -264,7 +265,7 @@ jobs:
         echo "✅ Test mode deployment validation successful"
 
     - name: Deploy API Gateway with Helm (GCP)
-      if: env.GCP_SA_KEY != '' && secrets.GCP_SA_KEY != ''
+      if: env.GCP_SA_KEY != ''
       run: |
         echo "🚀 Deploying API Gateway to GCP..."
         
@@ -285,7 +286,7 @@ jobs:
           --wait --timeout=300s
 
     - name: Verify deployment
-      if: env.GCP_SA_KEY != '' && secrets.GCP_SA_KEY != ''
+      if: env.GCP_SA_KEY != ''
       run: |
         echo "🔍 Verifying API Gateway deployment..."
         kubectl get pods -n ${{ env.NAMESPACE }} -l app.kubernetes.io/component=api-gateway || echo "No pods found"
