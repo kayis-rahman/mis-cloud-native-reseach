@@ -133,6 +133,9 @@ management:
       enabled: true
     prometheus:
       enabled: true
+  health:
+    redis:
+      enabled: true
   metrics:
     export:
       prometheus:

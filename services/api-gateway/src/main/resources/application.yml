@@ -58,6 +58,9 @@ management:
   endpoint:
     health:
       show-details: never
+  health:
+    redis:
+      enabled: false
 
 # Security and rate limit configuration
 security:

@@ -75,7 +75,8 @@ public class SecurityConfig {
             String apiKey = exchange.getRequest().getHeaders().getFirst(headerName);
 
             if (apiKey == null || !validApiKeys.contains(apiKey)) {
-                exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
+                // Align with Global ApiKeyFilter behavior and tests: use 403 for missing/invalid API key
+                exchange.getResponse().setStatusCode(HttpStatus.FORBIDDEN);
                 return exchange.getResponse().setComplete();
             }
 
