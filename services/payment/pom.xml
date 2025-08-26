@@ -96,6 +96,11 @@
             <artifactId>h2</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>com.grafana</groupId>
+            <artifactId>grafana-opentelemetry-starter</artifactId>
+            <version>1.4.0</version>
+        </dependency>
     </dependencies>
 
     <build>

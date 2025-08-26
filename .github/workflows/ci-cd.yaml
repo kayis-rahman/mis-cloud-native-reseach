@@ -315,7 +315,7 @@ jobs:
           docker build -t "$IMAGE" .
 
           echo "Pushing image: $IMAGE"
-          docker push -f "$IMAGE"
+          docker push "$IMAGE"
           echo "✅ Successfully pushed $IMAGE"
 
           cd ../..
