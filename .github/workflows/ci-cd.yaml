@@ -480,10 +480,10 @@ jobs:
       run: |
         echo "🔧 Configuring kubectl for GKE cluster..."
         
-        # Use infrastructure outputs if available, otherwise use defaults
-        CLUSTER_NAME="${{ needs.infrastructure.outputs.cluster-name }}"
-        CLUSTER_LOCATION="${{ needs.infrastructure.outputs.cluster-location }}"
-        PROJECT_ID="${{ needs.infrastructure.outputs.project-id || secrets.GCP_PROJECT_ID }}"
+        # Configure cluster parameters (static)
+        CLUSTER_NAME="mis-research-cloud-native-gke"
+        CLUSTER_LOCATION="us-central1"
+        PROJECT_ID="${{ secrets.GCP_PROJECT }}"
         
         echo "  Cluster: $CLUSTER_NAME"
         echo "  Location: $CLUSTER_LOCATION"

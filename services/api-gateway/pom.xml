@@ -124,6 +124,11 @@
             <version>4.7.3</version>
             <scope>provided</scope>
         </dependency>
+        <dependency>
+            <groupId>com.grafana</groupId>
+            <artifactId>grafana-opentelemetry-starter</artifactId>
+            <version>1.4.0</version>
+        </dependency>
     </dependencies>
 
     <build>
