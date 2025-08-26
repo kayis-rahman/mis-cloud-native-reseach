@@ -21,6 +21,8 @@ spring:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
 
 # Full observability for production
+server:
+  port: 8085
 management:
   endpoints:
     web:
@@ -30,6 +32,8 @@ management:
     health:
       enabled: true
       show-details: always
+      probes:
+        enabled: true
     metrics:
       enabled: true
     prometheus:
