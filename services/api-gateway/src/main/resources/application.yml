@@ -1,11 +1,8 @@
-# Default configuration - development profile (no observability)
 spring:
   application:
     name: api-gateway
   main:
     web-application-type: reactive
-  profiles:
-    active: development
   cloud:
     gateway:
       default-filters:
@@ -53,21 +50,24 @@ spring:
 server:
   port: ${SERVER_PORT:8080}
 
-# Basic logging for development
-logging:
-  level:
-    com.sparkage: INFO
-    org.springframework.cloud.gateway: INFO
-  pattern:
-    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
-
-# Basic management endpoints (no observability)
 management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: "health,info"
   endpoint:
     health:
-      enabled: true
-      show-details: when-authorized
+      show-details: never
+
+# Security and rate limit configuration
+security:
+  api-keys: ${SECURITY_API_KEYS:dev-key-change-me}
+  header-name: ${SECURITY_API_KEY_HEADER:X-API-Key}
+  allowlist-paths: 
+    - /actuator/health
+    - /actuator/info
+
+ratelimit:
+  replenish-rate: ${RATE_LIMIT_REPLENISH_PER_SEC:10}
+  burst-capacity: ${RATE_LIMIT_BURST_CAPACITY:20}
+  cache-expire-minutes: ${RATE_LIMIT_CACHE_MINUTES:10}

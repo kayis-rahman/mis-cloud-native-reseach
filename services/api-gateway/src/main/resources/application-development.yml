@@ -151,9 +151,6 @@ management:
     prometheus:
       enabled: true
   metrics:
-    export:
-      prometheus:
-        enabled: true
     distribution:
       percentiles-histogram:
         http.server.requests: true
@@ -162,6 +159,14 @@ management:
     tags:
       application: ${spring.application.name}
       environment: development
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+  simple:
+    metrics:
+      export:
+        enabled: false
   tracing:
     sampling:
       probability: ${OTEL_SAMPLING_PROBABILITY:1.0}

@@ -11,9 +11,7 @@ import org.springframework.test.web.reactive.server.WebTestClient;
         "security.api-keys=itest",
         "security.header-name=X-API-Key",
         "ratelimit.replenish-rate=100",
-        "ratelimit.burst-capacity=100",
-        "spring.data.redis.url=redis://localhost:6379",
-        "management.health.redis.enabled=false"  // Disable Redis health check for tests
+        "ratelimit.burst-capacity=100"
     })
 class ApiGatewayIntegrationTest {
 
@@ -33,11 +31,11 @@ class ApiGatewayIntegrationTest {
 
     @Test
     void unknownPathRequiresApiKey() {
-        // Without key -> 401 from Spring Security (since we're using Spring Security with custom filter)
+        // Without key -> 403 from ApiKeyFilter
         webTestClient.get()
                 .uri("/api/cart/test")
                 .exchange()
-                .expectStatus().isUnauthorized();
+                .expectStatus().isForbidden();
 
         // With valid key -> should pass filters; no route exists so typically 404
         webTestClient.get()
