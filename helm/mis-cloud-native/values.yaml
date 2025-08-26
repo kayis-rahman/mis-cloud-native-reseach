@@ -103,22 +103,22 @@ services:
             name: api-gateway-security
             key: apiKeys
       - name: SECURITY_HEADER_NAME
-        value: "{{ .Values.services.api-gateway.security.headerName }}"
+        value: "{{ index .Values.services \"api-gateway\" \"security\" \"headerName\" }}"
       - name: RATELIMIT_REPLENISH_RATE
-        value: "{{ .Values.services.api-gateway.rateLimit.replenishRate }}"
+        value: "{{ index .Values.services \"api-gateway\" \"rateLimit\" \"replenishRate\" }}"
       - name: RATELIMIT_BURST_CAPACITY
-        value: "{{ .Values.services.api-gateway.rateLimit.burstCapacity }}"
+        value: "{{ index .Values.services \"api-gateway\" \"rateLimit\" \"burstCapacity\" }}"
       # Service URIs
       - name: IDENTITY_URI
-        value: "{{ .Values.services.api-gateway.serviceUris.identity }}"
+        value: "{{ index .Values.services \"api-gateway\" \"serviceUris\" \"identity\" }}"
       - name: PRODUCT_URI
-        value: "{{ .Values.services.api-gateway.serviceUris.product }}"
+        value: "{{ index .Values.services \"api-gateway\" \"serviceUris\" \"product\" }}"
       - name: CART_URI
-        value: "{{ .Values.services.api-gateway.serviceUris.cart }}"
+        value: "{{ index .Values.services \"api-gateway\" \"serviceUris\" \"cart\" }}"
       - name: ORDER_URI
-        value: "{{ .Values.services.api-gateway.serviceUris.order }}"
+        value: "{{ index .Values.services \"api-gateway\" \"serviceUris\" \"order\" }}"
       - name: PAYMENT_URI
-        value: "{{ .Values.services.api-gateway.serviceUris.payment }}"
+        value: "{{ index .Values.services \"api-gateway\" \"serviceUris\" \"payment\" }}"
       # Redis for rate limiting (optional, falls back to in-memory)
       - name: SPRING_REDIS_HOST
         value: "redis-service.{{ .Values.global.environment }}"
