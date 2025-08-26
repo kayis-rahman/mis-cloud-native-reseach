@@ -33,7 +33,7 @@ echo "✅ All services deployed with new image format: ${IMAGE_REPOSITORY}/[serv
 echo "⏳ Waiting for deployments to be ready..."
 for svc in identity product cart order payment api-gateway; do
   echo "  Checking $svc..."
-  kubectl wait --for=condition=available --timeout=300s deployment/${RELEASE}-${svc} -n ${NAMESPACE} || echo "⚠️  $svc deployment not ready"
+  kubectl wait --for=condition=available --timeout=30s deployment/${RELEASE}-${svc} -n ${NAMESPACE} || echo "⚠️  $svc deployment not ready"
 done
 
 echo "🎉 Deployment complete!"

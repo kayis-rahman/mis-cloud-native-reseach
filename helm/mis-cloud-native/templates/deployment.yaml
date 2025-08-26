@@ -56,7 +56,7 @@ spec:
             {{- range $svc.env }}
             - name: {{ .name }}
               {{- if .value }}
-              value: {{ .value | quote }}
+              value: {{ tpl .value $ | quote }}
               {{- else if .valueFrom }}
               valueFrom:
                 {{- toYaml .valueFrom | nindent 16 }}

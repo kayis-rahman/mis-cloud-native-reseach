@@ -202,7 +202,19 @@ management:
       version: ${APP_VERSION:unknown}
   tracing:
     sampling:
-      probability: 0.1
+      probability: ${OTEL_SAMPLING_PROBABILITY:1.0}
   zipkin:
     tracing:
       endpoint: ${ZIPKIN_URL:http://jaeger-collector:9411/api/v2/spans}
+
+
+# OpenTelemetry to Grafana Cloud or in-cluster Alloy (override via env)
+otel:
+  traces:
+    exporter: ${OTEL_TRACES_EXPORTER:otlp}
+  exporter:
+    otlp:
+      protocol: ${OTEL_EXPORTER_OTLP_PROTOCOL:http/protobuf}
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://grafana-k8s-monitoring-alloy-receiver.grafana.svc.cluster.local:4318}
+      headers: ${OTEL_EXPORTER_OTLP_HEADERS:}
+  propagators: ${OTEL_PROPAGATORS:tracecontext,baggage}
