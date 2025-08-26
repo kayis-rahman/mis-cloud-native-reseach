@@ -7,7 +7,7 @@ SERVICE="${SERVICE:-identity}"
 NAMESPACE="default"
 RELEASE="mis"
 
-kubectl -n "$NAMESPACE" rollout status deploy/${RELEASE}-${SERVICE} --timeout=180s || true
+kubectl -n "$NAMESPACE" rollout status deploy/${RELEASE}-${SERVICE} --timeout=30s || true
 kubectl -n "$NAMESPACE" get deploy,po,svc
 
 echo "[INFO] Attempting port-forward for basic health check (Ctrl+C to stop after output)"
