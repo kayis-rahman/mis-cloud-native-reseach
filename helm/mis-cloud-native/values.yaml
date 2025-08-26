@@ -139,7 +139,7 @@ services:
       - name: OTEL_EXPORTER_OTLP_PROTOCOL
         value: "http/protobuf"
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
-        value: "http://grafana-k8s-monitoring-alloy-receiver.grafana.svc.cluster.local:4318"
+        value: ""
       - name: OTEL_PROPAGATORS
         value: "tracecontext,baggage"
     startupProbe:
@@ -211,7 +211,7 @@ services:
       - name: OTEL_EXPORTER_OTLP_PROTOCOL
         value: "http/protobuf"
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
-        value: "http://grafana-k8s-monitoring-alloy-receiver.grafana.svc.cluster.local:4318"
+        value: ""
       - name: OTEL_PROPAGATORS
         value: "tracecontext,baggage"
 
@@ -250,7 +250,7 @@ services:
       - name: OTEL_EXPORTER_OTLP_PROTOCOL
         value: "http/protobuf"
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
-        value: "http://grafana-k8s-monitoring-alloy-receiver.grafana.svc.cluster.local:4318"
+        value: ""
       - name: OTEL_PROPAGATORS
         value: "tracecontext,baggage"
 
@@ -289,7 +289,7 @@ services:
       - name: OTEL_EXPORTER_OTLP_PROTOCOL
         value: "http/protobuf"
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
-        value: "http://grafana-k8s-monitoring-alloy-receiver.grafana.svc.cluster.local:4318"
+        value: ""
       - name: OTEL_PROPAGATORS
         value: "tracecontext,baggage"
 
@@ -328,7 +328,7 @@ services:
       - name: OTEL_EXPORTER_OTLP_PROTOCOL
         value: "http/protobuf"
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
-        value: "http://grafana-k8s-monitoring-alloy-receiver.grafana.svc.cluster.local:4318"
+        value: ""
       - name: OTEL_PROPAGATORS
         value: "tracecontext,baggage"
 
@@ -367,7 +367,7 @@ services:
       - name: OTEL_EXPORTER_OTLP_PROTOCOL
         value: "http/protobuf"
       - name: OTEL_EXPORTER_OTLP_ENDPOINT
-        value: "http://grafana-k8s-monitoring-alloy-receiver.grafana.svc.cluster.local:4318"
+        value: ""
       - name: OTEL_PROPAGATORS
         value: "tracecontext,baggage"
 
