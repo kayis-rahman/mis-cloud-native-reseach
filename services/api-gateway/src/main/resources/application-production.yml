@@ -16,8 +16,8 @@ spring:
         - name: Retry
           args:
             retries: 3
-            statuses: BAD_GATEWAY,GATEWAY_TIMEOUT
-            methods: GET,POST
+            statuses: [BAD_GATEWAY, GATEWAY_TIMEOUT]
+            methods: [GET, POST]
             backoff:
               firstBackoff: 50ms
               maxBackoff: 500ms
@@ -27,7 +27,13 @@ spring:
             allowedOriginPatterns:
               - "https://*.yourdomain.com"
               - "https://yourdomain.com"
-            allowedMethods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - PATCH
+              - DELETE
+              - OPTIONS
             allowedHeaders: "*"
             allowCredentials: true
             maxAge: 3600

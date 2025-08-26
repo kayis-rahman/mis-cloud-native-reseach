@@ -56,215 +56,214 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-maven-
 
-#    - name: Scan for secrets
-#      run: |
-#        chmod +x scripts/scan_secrets.sh
-#        ./scripts/scan_secrets.sh
-#
-#    - name: Security scan (filesystem)
-#      run: |
-#        chmod +x scripts/scan_security.sh
-#        NO_PROGRESS=1 ./scripts/scan_security.sh
+    - name: Scan for secrets
+      run: |
+        chmod +x scripts/scan_secrets.sh
+        ./scripts/scan_secrets.sh
 
-#  # Job 2: Infrastructure Setup
-#  infrastructure:
-#    name: Infrastructure Setup
-#    runs-on: ubuntu-latest
-#    #if: github.event_name != 'pull_request'
-#    outputs:
-#      cluster-name: ${{ steps.infra-outputs.outputs.cluster-name }}
-#      cluster-location: ${{ steps.infra-outputs.outputs.cluster-location }}
-#      project-id: ${{ steps.infra-outputs.outputs.project-id }}
-#    steps:
-#    - name: Checkout code
-#      uses: actions/checkout@v4
-#
-#    - name: Authenticate to Google Cloud
-#      uses: google-github-actions/auth@v2
-#      with:
-#        credentials_json: ${{ secrets.GCP_SA_KEY }}
-#
-#    - name: Validate Google Cloud Authentication
-#      run: |
-#        echo "🔐 Validating Google Cloud Authentication..."
-#
-#        # The google-github-actions/auth creates a credentials file but doesn't activate it for gcloud
-#        # We need to activate the service account manually
-#
-#        # Check if credentials file was created by the auth action
-#        if [ -n "$GOOGLE_APPLICATION_CREDENTIALS" ] && [ -f "$GOOGLE_APPLICATION_CREDENTIALS" ]; then
-#          echo "✅ Found credentials file: $GOOGLE_APPLICATION_CREDENTIALS"
-#
-#          # Activate the service account
-#          echo "🔑 Activating service account..."
-#          gcloud auth activate-service-account --key-file="$GOOGLE_APPLICATION_CREDENTIALS"
-#
-#          # Set the project
-#          echo "📋 Setting project to: ${{ secrets.GCP_PROJECT_ID }}"
-#          gcloud config set project "${{ secrets.GCP_PROJECT_ID }}"
-#
-#        else
-#          echo "❌ No credentials file found from auth action"
-#          echo "GOOGLE_APPLICATION_CREDENTIALS: $GOOGLE_APPLICATION_CREDENTIALS"
-#          exit 1
-#        fi
-#
-#        # Now validate the authentication
-#        echo "🧪 Testing authentication..."
-#        if gcloud auth list --filter=status:ACTIVE --format="value(account)" | grep -q "."; then
-#          echo "✅ Successfully authenticated with Google Cloud"
-#
-#          # Display active account info
-#          echo "📋 Active account:"
-#          gcloud auth list --filter=status:ACTIVE --format="table(account,status)"
-#
-#          # Test project access
-#          echo "🔍 Testing project access..."
-#          if gcloud projects describe "${{ secrets.GCP_PROJECT_ID }}" --quiet; then
-#            echo "✅ Successfully accessed project: ${{ secrets.GCP_PROJECT_ID }}"
-#          else
-#            echo "❌ Failed to access project. Check service account permissions."
-#            exit 1
-#          fi
-#
-#          # Test API access (basic test)
-#          echo "🧪 Testing basic API access..."
-#          if gcloud services list --limit=1 --quiet >/dev/null 2>&1; then
-#            echo "✅ Service account has basic API access"
-#          else
-#            echo "⚠️  Limited API access - may need additional permissions for infrastructure setup"
-#          fi
-#
-#        else
-#          echo "❌ Authentication failed - no active accounts found after activation"
-#          echo "Debug info:"
-#          gcloud auth list
-#          exit 1
-#        fi
-#
-#    - name: Set up Google Cloud SDK
-#      uses: google-github-actions/setup-gcloud@v2
-#      with:
-#        project_id: ${{ secrets.GCP_PROJECT }}
-#
-#    - name: Install Terraform
-#      uses: hashicorp/setup-terraform@v3
-#      with:
-#        terraform_version: '1.5.0'
-#        terraform_wrapper: false
-#
-#    - name: Set up kubectl
-#      uses: azure/setup-kubectl@v4
-#      with:
-#        version: 'v1.28.0'
-#
-#
-#    - name: Create base infrastructure
-#      run: |
-#        chmod +x scripts/create_infra.sh
-#        ./scripts/create_infra.sh
-#      env:
-#        TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT }}
-#        TF_VAR_gcp_region: ${{ secrets.GCP_REGION || 'us-central1' }}
-#        TF_VAR_gcp_zone: ${{ secrets.GCP_ZONE || 'us-central1-a' }}
-#        TF_VAR_project_name: "mis-cloud-native"
-#        TF_VAR_network_cidr: "10.0.0.0/16"
-#        TF_VAR_gke_version: "1.29"
-#        TF_VAR_db_username: "misadmin"
-#        TF_VAR_db_tier: "db-f1-micro"
-#
-#    - name: Create databases
-#      run: |
-#        chmod +x scripts/create_db.sh
-#        ./scripts/create_db.sh
-#      env:
-#        TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT }}
-#        TF_VAR_gcp_region: ${{ secrets.GCP_REGION || 'us-central1' }}
-#        TF_VAR_gcp_zone: ${{ secrets.GCP_ZONE || 'us-central1-a' }}
-#        TF_VAR_project_name: "mis-cloud-native"
-#        TF_VAR_db_username: "misadmin"
-#        TF_VAR_db_tier: "db-f1-micro"
-#
-#    - name: Create Kubernetes secrets
-#      run: |
-#        chmod +x scripts/create_secrets.sh
-#        ./scripts/create_secrets.sh
-#      env:
-#        TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT }}
-#        TF_VAR_gcp_region: ${{ secrets.GCP_REGION || 'us-central1' }}
-#        TF_VAR_project_name: "mis-cloud-native"
-#        GHCR_OWNER: ${{ github.repository_owner }}
-#        GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#        GHCR_TOKEN_SECRET_ID: ghcr-pat
-#        NAMESPACE: default
-#        TF_DIR: terraform
-#        DB_PASSWORD: ${{ github.ref == 'refs/heads/main' && secrets.DB_PASSWORD_PRODUCTION || secrets.DB_PASSWORD_STAGING || 'temp-password-123' }}
-#        JWT_SECRET: ${{ github.ref == 'refs/heads/main' && secrets.JWT_SECRET_PRODUCTION || secrets.JWT_SECRET_STAGING || 'temp-jwt-secret-abc123' }}
-#
-#    - name: Validate infrastructure
-#      run: |
-#        chmod +x scripts/validate_infra.sh
-#        ./scripts/validate_infra.sh
-#      env:
-#        TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT }}
-#        TF_VAR_gcp_region: ${{ secrets.GCP_REGION || 'us-central1' }}
-#        TF_VAR_project_name: "mis-cloud-native"
-#
-#    - name: Export infrastructure outputs
-#      id: infra-outputs
-#      run: |
-#        cd terraform
-#        echo "cluster-name=$(terraform output -raw cluster_name)" >> $GITHUB_OUTPUT
-#        echo "cluster-location=$(terraform output -raw cluster_location)" >> $GITHUB_OUTPUT
-#        echo "project-id=$(terraform output -raw project_id)" >> $GITHUB_OUTPUT
-#      env:
-#        TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT }}
-#        TF_VAR_gcp_region: ${{ secrets.GCP_REGION || 'us-central1' }}
+    - name: Security scan (filesystem)
+      run: |
+        chmod +x scripts/scan_security.sh
+        NO_PROGRESS=1 ./scripts/scan_security.sh
 
-# Temporary commanding Tests since it's working properly
-# Job 2: Unit and Integration Tests
-#  test:
-#    name: Unit & Integration Tests
-#    runs-on: ubuntu-latest
-#    strategy:
-#      matrix:
-#        service: [identity, product, cart, order, payment, api-gateway]
-#    steps:
-#    - name: Checkout code
-#      uses: actions/checkout@v4
-#
-#    - name: Set up JDK 17
-#      uses: actions/setup-java@v4
-#      with:
-#        java-version: '17'
-#        distribution: 'temurin'
-#
-#    - name: Cache Maven dependencies
-#      uses: actions/cache@v4
-#      with:
-#        path: .m2/repository
-#        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-#        restore-keys: |
-#          ${{ runner.os }}-maven-
-#
-#    - name: Run tests for ${{ matrix.service }}
-#      run: |
-#        chmod +x scripts/run_tests.sh
-#        ./scripts/run_tests.sh ${{ matrix.service }}
-#
-#    - name: Upload test results
-#      uses: actions/upload-artifact@v4
-#      if: always()
-#      with:
-#        name: test-results-${{ matrix.service }}
-#        path: services/${{ matrix.service }}/target/surefire-reports/
-#
-#    - name: Upload coverage reports
-#      uses: actions/upload-artifact@v4
-#      if: always()
-#      with:
-#        name: coverage-${{ matrix.service }}
-#        path: services/${{ matrix.service }}/target/site/jacoco/
+  # Job 2: Infrastructure Setup
+  infrastructure:
+    name: Infrastructure Setup
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
+    outputs:
+      cluster-name: ${{ steps.infra-outputs.outputs.cluster-name }}
+      cluster-location: ${{ steps.infra-outputs.outputs.cluster-location }}
+      project-id: ${{ steps.infra-outputs.outputs.project-id }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+    - name: Validate Google Cloud Authentication
+      run: |
+        echo "🔐 Validating Google Cloud Authentication..."
+
+        # The google-github-actions/auth creates a credentials file but doesn't activate it for gcloud
+        # We need to activate the service account manually
+
+        # Check if credentials file was created by the auth action
+        if [ -n "$GOOGLE_APPLICATION_CREDENTIALS" ] && [ -f "$GOOGLE_APPLICATION_CREDENTIALS" ]; then
+          echo "✅ Found credentials file: $GOOGLE_APPLICATION_CREDENTIALS"
+
+          # Activate the service account
+          echo "🔑 Activating service account..."
+          gcloud auth activate-service-account --key-file="$GOOGLE_APPLICATION_CREDENTIALS"
+
+          # Set the project
+          echo "📋 Setting project to: ${{ secrets.GCP_PROJECT_ID }}"
+          gcloud config set project "${{ secrets.GCP_PROJECT_ID }}"
+
+        else
+          echo "❌ No credentials file found from auth action"
+          echo "GOOGLE_APPLICATION_CREDENTIALS: $GOOGLE_APPLICATION_CREDENTIALS"
+          exit 1
+        fi
+
+        # Now validate the authentication
+        echo "🧪 Testing authentication..."
+        if gcloud auth list --filter=status:ACTIVE --format="value(account)" | grep -q "."; then
+          echo "✅ Successfully authenticated with Google Cloud"
+
+          # Display active account info
+          echo "📋 Active account:"
+          gcloud auth list --filter=status:ACTIVE --format="table(account,status)"
+
+          # Test project access
+          echo "🔍 Testing project access..."
+          if gcloud projects describe "${{ secrets.GCP_PROJECT_ID }}" --quiet; then
+            echo "✅ Successfully accessed project: ${{ secrets.GCP_PROJECT_ID }}"
+          else
+            echo "❌ Failed to access project. Check service account permissions."
+            exit 1
+          fi
+
+          # Test API access (basic test)
+          echo "🧪 Testing basic API access..."
+          if gcloud services list --limit=1 --quiet >/dev/null 2>&1; then
+            echo "✅ Service account has basic API access"
+          else
+            echo "⚠️  Limited API access - may need additional permissions for infrastructure setup"
+          fi
+
+        else
+          echo "❌ Authentication failed - no active accounts found after activation"
+          echo "Debug info:"
+          gcloud auth list
+          exit 1
+        fi
+
+    - name: Set up Google Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+      with:
+        project_id: ${{ secrets.GCP_PROJECT }}
+
+    - name: Install Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: '1.5.0'
+        terraform_wrapper: false
+
+    - name: Set up kubectl
+      uses: azure/setup-kubectl@v4
+      with:
+        version: 'v1.28.0'
+
+
+    - name: Create base infrastructure
+      run: |
+        chmod +x scripts/create_infra.sh
+        ./scripts/create_infra.sh
+      env:
+        TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT }}
+        TF_VAR_gcp_region: ${{ secrets.GCP_REGION || 'us-central1' }}
+        TF_VAR_gcp_zone: ${{ secrets.GCP_ZONE || 'us-central1-a' }}
+        TF_VAR_project_name: "mis-cloud-native"
+        TF_VAR_network_cidr: "10.0.0.0/16"
+        TF_VAR_gke_version: "1.29"
+        TF_VAR_db_username: "misadmin"
+        TF_VAR_db_tier: "db-f1-micro"
+
+    - name: Create databases
+      run: |
+        chmod +x scripts/create_db.sh
+        ./scripts/create_db.sh
+      env:
+        TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT }}
+        TF_VAR_gcp_region: ${{ secrets.GCP_REGION || 'us-central1' }}
+        TF_VAR_gcp_zone: ${{ secrets.GCP_ZONE || 'us-central1-a' }}
+        TF_VAR_project_name: "mis-cloud-native"
+        TF_VAR_db_username: "misadmin"
+        TF_VAR_db_tier: "db-f1-micro"
+
+    - name: Create Kubernetes secrets
+      run: |
+        chmod +x scripts/create_secrets.sh
+        ./scripts/create_secrets.sh
+      env:
+        TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT }}
+        TF_VAR_gcp_region: ${{ secrets.GCP_REGION || 'us-central1' }}
+        TF_VAR_project_name: "mis-cloud-native"
+        GHCR_OWNER: ${{ github.repository_owner }}
+        GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GHCR_TOKEN_SECRET_ID: ghcr-pat
+        NAMESPACE: default
+        TF_DIR: terraform
+        DB_PASSWORD: ${{ github.ref == 'refs/heads/main' && secrets.DB_PASSWORD_PRODUCTION || secrets.DB_PASSWORD_STAGING || 'temp-password-123' }}
+        JWT_SECRET: ${{ github.ref == 'refs/heads/main' && secrets.JWT_SECRET_PRODUCTION || secrets.JWT_SECRET_STAGING || 'temp-jwt-secret-abc123' }}
+
+    - name: Validate infrastructure
+      run: |
+        chmod +x scripts/validate_infra.sh
+        ./scripts/validate_infra.sh
+      env:
+        TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT }}
+        TF_VAR_gcp_region: ${{ secrets.GCP_REGION || 'us-central1' }}
+        TF_VAR_project_name: "mis-cloud-native"
+
+    - name: Export infrastructure outputs
+      id: infra-outputs
+      run: |
+        cd terraform
+        echo "cluster-name=$(terraform output -raw cluster_name)" >> $GITHUB_OUTPUT
+        echo "cluster-location=$(terraform output -raw cluster_location)" >> $GITHUB_OUTPUT
+        echo "project-id=$(terraform output -raw project_id)" >> $GITHUB_OUTPUT
+      env:
+        TF_VAR_gcp_project_id: ${{ secrets.GCP_PROJECT }}
+        TF_VAR_gcp_region: ${{ secrets.GCP_REGION || 'us-central1' }}
+
+  # Job 3: Unit and Integration Tests
+  test:
+    name: Unit & Integration Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [identity, product, cart, order, payment, api-gateway]
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Cache Maven dependencies
+      uses: actions/cache@v4
+      with:
+        path: .m2/repository
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-maven-
+
+    - name: Run tests for ${{ matrix.service }}
+      run: |
+        chmod +x scripts/run_tests.sh
+        ./scripts/run_tests.sh ${{ matrix.service }}
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results-${{ matrix.service }}
+        path: services/${{ matrix.service }}/target/surefire-reports/
+
+    - name: Upload coverage reports
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: coverage-${{ matrix.service }}
+        path: services/${{ matrix.service }}/target/site/jacoco/
 
   # Job 3: Build and Push Container Images
   build-images:
@@ -321,14 +320,14 @@ jobs:
           cd ../..
         done
 
-#    - name: Security scan images
-#      run: |
-#        chmod +x scripts/scan_security.sh
-#        for service in identity product cart order payment api-gateway; do
-#          echo "Scanning image: ${{ env.IMAGE_REPOSITORY }}/${service}:${{ env.IMAGE_TAG }}"
-#          IMAGE="${{ env.IMAGE_REPOSITORY }}/${service}:${{ env.IMAGE_TAG }}" \
-#            NO_PROGRESS=1 ./scripts/scan_security.sh
-#        done
+    - name: Security scan images
+      run: |
+        chmod +x scripts/scan_security.sh
+        for service in identity product cart order payment api-gateway; do
+          echo "Scanning image: ${{ env.IMAGE_REPOSITORY }}/${service}:${{ env.IMAGE_TAG }}"
+          IMAGE="${{ env.IMAGE_REPOSITORY }}/${service}:${{ env.IMAGE_TAG }}" \
+            NO_PROGRESS=1 ./scripts/scan_security.sh
+        done
 
   # Job 5: Deploy to Production
   deploy-production:
