@@ -142,15 +142,22 @@ services:
         value: "http://grafana-k8s-monitoring-alloy-receiver.grafana.svc.cluster.local:4318"
       - name: OTEL_PROPAGATORS
         value: "tracecontext,baggage"
+    startupProbe:
+      path: /actuator/health/liveness
+      # Allow up to ~2 minutes for cold start (5s period * 24 failures = 120s)
+      initialDelaySeconds: 0
+      periodSeconds: 5
+      timeoutSeconds: 3
+      failureThreshold: 24
     livenessProbe:
       path: /actuator/health/liveness
-      initialDelaySeconds: 30
+      initialDelaySeconds: 60
       periodSeconds: 10
       timeoutSeconds: 5
       failureThreshold: 3
     readinessProbe:
       path: /actuator/health/readiness
-      initialDelaySeconds: 20
+      initialDelaySeconds: 30
       periodSeconds: 10
       timeoutSeconds: 5
       failureThreshold: 3

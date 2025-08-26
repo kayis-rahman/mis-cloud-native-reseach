@@ -161,11 +161,6 @@ logging:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{traceId:-},%X{spanId:-}] %logger{36} - %msg%n"
   file:
     name: /app/logs/api-gateway.log
-  logback:
-    rollingpolicy:
-      max-file-size: 100MB
-      max-history: 7
-      total-size-cap: 1GB
 
 # Enhanced management endpoints for production with security
 management:

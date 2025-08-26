@@ -40,11 +40,6 @@ logging:
     com.sparkage: INFO
   file:
     name: logs/api-gateway.log
-  logback:
-    rollingpolicy:
-      max-file-size: 100MB
-      total-size-cap: 1GB
-      max-history: 7
 
 management:
   endpoints:

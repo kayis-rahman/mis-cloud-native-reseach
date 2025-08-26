@@ -97,6 +97,20 @@ spec:
             failureThreshold: {{ $svc.livenessProbe.failureThreshold }}
             {{- end }}
           {{- end }}
+          {{- if $svc.startupProbe }}
+          startupProbe:
+            httpGet:
+              path: {{ $svc.startupProbe.path | default "/actuator/health/liveness" }}
+              port: http
+            initialDelaySeconds: {{ $svc.startupProbe.initialDelaySeconds | default 0 }}
+            periodSeconds: {{ $svc.startupProbe.periodSeconds | default 5 }}
+            {{- if $svc.startupProbe.timeoutSeconds }}
+            timeoutSeconds: {{ $svc.startupProbe.timeoutSeconds }}
+            {{- end }}
+            {{- if $svc.startupProbe.failureThreshold }}
+            failureThreshold: {{ $svc.startupProbe.failureThreshold }}
+            {{- end }}
+          {{- end }}
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true
