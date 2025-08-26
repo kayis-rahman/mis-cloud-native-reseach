@@ -3,8 +3,6 @@ spring:
     name: api-gateway
   main:
     web-application-type: reactive
-  profiles:
-    active: production
   cloud:
     gateway:
       default-filters:
@@ -99,56 +97,6 @@ security:
   api-keys: ${SECURITY_API_KEYS:prod-secure-api-key}
   header-name: ${SECURITY_HEADER_NAME:X-API-Key}
 
-# Enhanced circuit breaker configuration for production
-resilience4j:
-  circuitbreaker:
-    instances:
-      identity-cb:
-        registerHealthIndicator: true
-        slidingWindowSize: 20
-        permittedNumberOfCallsInHalfOpenState: 5
-        slidingWindowType: COUNT_BASED
-        waitDurationInOpenState: 10s
-        failureRateThreshold: 30
-        eventConsumerBufferSize: 20
-        automaticTransitionFromOpenToHalfOpenEnabled: true
-      product-cb:
-        registerHealthIndicator: true
-        slidingWindowSize: 20
-        permittedNumberOfCallsInHalfOpenState: 5
-        slidingWindowType: COUNT_BASED
-        waitDurationInOpenState: 10s
-        failureRateThreshold: 30
-        eventConsumerBufferSize: 20
-        automaticTransitionFromOpenToHalfOpenEnabled: true
-      cart-cb:
-        registerHealthIndicator: true
-        slidingWindowSize: 20
-        permittedNumberOfCallsInHalfOpenState: 5
-        slidingWindowType: COUNT_BASED
-        waitDurationInOpenState: 10s
-        failureRateThreshold: 30
-        eventConsumerBufferSize: 20
-        automaticTransitionFromOpenToHalfOpenEnabled: true
-      order-cb:
-        registerHealthIndicator: true
-        slidingWindowSize: 20
-        permittedNumberOfCallsInHalfOpenState: 5
-        slidingWindowType: COUNT_BASED
-        waitDurationInOpenState: 10s
-        failureRateThreshold: 30
-        eventConsumerBufferSize: 20
-        automaticTransitionFromOpenToHalfOpenEnabled: true
-      payment-cb:
-        registerHealthIndicator: true
-        slidingWindowSize: 20
-        permittedNumberOfCallsInHalfOpenState: 5
-        slidingWindowType: COUNT_BASED
-        waitDurationInOpenState: 10s
-        failureRateThreshold: 30
-        eventConsumerBufferSize: 20
-        automaticTransitionFromOpenToHalfOpenEnabled: true
-
 # Production logging configuration
 logging:
   level:
@@ -198,9 +146,6 @@ management:
   tracing:
     sampling:
       probability: ${OTEL_SAMPLING_PROBABILITY:1.0}
-  zipkin:
-    tracing:
-      endpoint: ${ZIPKIN_URL:http://jaeger-collector:9411/api/v2/spans}
 
 
 # OpenTelemetry to Grafana Cloud or in-cluster Alloy (override via env)

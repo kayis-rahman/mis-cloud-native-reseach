@@ -2,7 +2,7 @@ global:
   imagePullPolicy: IfNotPresent
   imageRegistry: "ghcr.io"
   # Environment configuration - will be overridden by Helm during deployment
-  environment: "development"  # Can be: development, staging, production
+  environment: "production"  # Can be: development, staging, production
   # GCP Configuration
   gcp:
     projectId: ""  # Will be set via GitHub Actions
