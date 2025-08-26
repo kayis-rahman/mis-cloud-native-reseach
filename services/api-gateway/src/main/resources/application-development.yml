@@ -75,65 +75,6 @@ spring:
 server:
   port: ${SERVER_PORT:8080}
 
-# Basic security configuration
-security:
-  api-keys: ${SECURITY_API_KEYS:dev-api-key}
-  header-name: ${SECURITY_HEADER_NAME:X-API-Key}
-
-# Circuit breaker configuration
-resilience4j:
-  circuitbreaker:
-    instances:
-      identity-cb:
-        registerHealthIndicator: true
-        slidingWindowSize: 10
-        permittedNumberOfCallsInHalfOpenState: 3
-        slidingWindowType: COUNT_BASED
-        waitDurationInOpenState: 5s
-        failureRateThreshold: 50
-        eventConsumerBufferSize: 10
-      product-cb:
-        registerHealthIndicator: true
-        slidingWindowSize: 10
-        permittedNumberOfCallsInHalfOpenState: 3
-        slidingWindowType: COUNT_BASED
-        waitDurationInOpenState: 5s
-        failureRateThreshold: 50
-        eventConsumerBufferSize: 10
-      cart-cb:
-        registerHealthIndicator: true
-        slidingWindowSize: 10
-        permittedNumberOfCallsInHalfOpenState: 3
-        slidingWindowType: COUNT_BASED
-        waitDurationInOpenState: 5s
-        failureRateThreshold: 50
-        eventConsumerBufferSize: 10
-      order-cb:
-        registerHealthIndicator: true
-        slidingWindowSize: 10
-        permittedNumberOfCallsInHalfOpenState: 3
-        slidingWindowType: COUNT_BASED
-        waitDurationInOpenState: 5s
-        failureRateThreshold: 50
-        eventConsumerBufferSize: 10
-      payment-cb:
-        registerHealthIndicator: true
-        slidingWindowSize: 10
-        permittedNumberOfCallsInHalfOpenState: 3
-        slidingWindowType: COUNT_BASED
-        waitDurationInOpenState: 5s
-        failureRateThreshold: 50
-        eventConsumerBufferSize: 10
-
-# Logging configuration
-logging:
-  level:
-    com.sparkage: INFO
-    org.springframework.cloud.gateway: INFO
-    org.springframework.web: INFO
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{traceId:-},%X{spanId:-}] %logger{36} - %msg%n"
-
 # Management endpoints for development
 management:
   endpoints:

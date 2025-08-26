@@ -149,18 +149,6 @@ services:
       periodSeconds: 5
       timeoutSeconds: 3
       failureThreshold: 24
-    livenessProbe:
-      path: /actuator/health/liveness
-      initialDelaySeconds: 60
-      periodSeconds: 10
-      timeoutSeconds: 5
-      failureThreshold: 3
-    readinessProbe:
-      path: /actuator/health/readiness
-      initialDelaySeconds: 30
-      periodSeconds: 10
-      timeoutSeconds: 5
-      failureThreshold: 3
     networkPolicy:
       enabled: true
       ingress:
@@ -226,14 +214,6 @@ services:
         value: "http://grafana-k8s-monitoring-alloy-receiver.grafana.svc.cluster.local:4318"
       - name: OTEL_PROPAGATORS
         value: "tracecontext,baggage"
-    livenessProbe:
-      path: /actuator/health/liveness
-      initialDelaySeconds: 30
-      periodSeconds: 10
-    readinessProbe:
-      path: /actuator/health/readiness
-      initialDelaySeconds: 20
-      periodSeconds: 10
 
   product:
     enabled: true
@@ -273,14 +253,6 @@ services:
         value: "http://grafana-k8s-monitoring-alloy-receiver.grafana.svc.cluster.local:4318"
       - name: OTEL_PROPAGATORS
         value: "tracecontext,baggage"
-    livenessProbe:
-      path: /actuator/health/liveness
-      initialDelaySeconds: 20
-      periodSeconds: 10
-    readinessProbe:
-      path: /actuator/health/readiness
-      initialDelaySeconds: 10
-      periodSeconds: 10
 
   cart:
     enabled: true
@@ -320,14 +292,6 @@ services:
         value: "http://grafana-k8s-monitoring-alloy-receiver.grafana.svc.cluster.local:4318"
       - name: OTEL_PROPAGATORS
         value: "tracecontext,baggage"
-    livenessProbe:
-      path: /actuator/health/liveness
-      initialDelaySeconds: 20
-      periodSeconds: 10
-    readinessProbe:
-      path: /actuator/health/readiness
-      initialDelaySeconds: 10
-      periodSeconds: 10
 
   order:
     enabled: true
@@ -367,14 +331,6 @@ services:
         value: "http://grafana-k8s-monitoring-alloy-receiver.grafana.svc.cluster.local:4318"
       - name: OTEL_PROPAGATORS
         value: "tracecontext,baggage"
-    livenessProbe:
-      path: /actuator/health/liveness
-      initialDelaySeconds: 20
-      periodSeconds: 10
-    readinessProbe:
-      path: /actuator/health/readiness
-      initialDelaySeconds: 10
-      periodSeconds: 10
 
   payment:
     enabled: true
@@ -414,13 +370,5 @@ services:
         value: "http://grafana-k8s-monitoring-alloy-receiver.grafana.svc.cluster.local:4318"
       - name: OTEL_PROPAGATORS
         value: "tracecontext,baggage"
-    livenessProbe:
-      path: /actuator/health/liveness
-      initialDelaySeconds: 20
-      periodSeconds: 10
-    readinessProbe:
-      path: /actuator/health/readiness
-      initialDelaySeconds: 10
-      periodSeconds: 10
 
 
