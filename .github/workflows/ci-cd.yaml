@@ -339,7 +339,7 @@ jobs:
       GHCR_TOKEN_SECRET_ID: ghcr-pat
       NAMESPACE: default
     runs-on: ubuntu-latest
-    needs: [build-images]
+#    needs: [build-images]
     if: github.event_name != 'pull_request'
     environment: production
     steps:
