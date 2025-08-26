@@ -385,7 +385,7 @@ jobs:
         
         # Set up proper registry variables
         REPO_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-        export GHCR_OWNER="${{ github.repository_owner }}
+        export GHCR_OWNER="${{ github.repository_owner }}"
         export GLOBAL_REGISTRY="${{ env.REGISTRY }}/$REPO_OWNER"
         
         echo "🚀 Deploying services to production with:"

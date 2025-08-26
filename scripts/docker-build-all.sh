@@ -18,8 +18,7 @@ set -euo pipefail
 : "${GHCR_TOKEN:?Set GHCR_TOKEN to a GitHub PAT with write:packages}"
 
 TAG=${TAG:-latest}
-#SERVICES=${SERVICES:-"identity product cart order payment api-gateway"}
-SERVICES=${SERVICES:-"api-gateway"}
+SERVICES=${SERVICES:-"identity product cart order payment api-gateway"}
 
 ROOT_DIR=$(cd "$(dirname "$0")/.." && pwd)
 

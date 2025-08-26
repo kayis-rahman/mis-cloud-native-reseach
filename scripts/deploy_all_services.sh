@@ -13,8 +13,7 @@ IMAGE_REPOSITORY="ghcr.io/kayis-rahman/mis-cloud-native-reseach"
 
 VALUES=( )
 
-#for svc in identity product cart order payment api-gateway; do
-for svc in api-gateway; do
+for svc in identity product cart order payment api-gateway; do
   VALUES+=( --set services.${svc}.enabled=true )
   img_var="IMG_$(printf "%s" "$svc" | tr '[:lower:]' '[:upper:]' | tr '-' '_')" # IMG_IDENTITY, IMG_API_GATEWAY etc
   if [[ -n "${!img_var:-}" ]]; then
