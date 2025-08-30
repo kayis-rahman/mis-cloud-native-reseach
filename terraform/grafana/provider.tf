@@ -10,6 +10,6 @@ provider "helm" {
   kubernetes {
     # Replace this with values that provide connection to your cluster
     config_path    = "~/.kube/config"
-    config_context = "mis-research-cloud-native-gke"
+    config_context = "mis-cloud-native-gke"
   }
 }

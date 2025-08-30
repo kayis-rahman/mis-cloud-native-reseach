@@ -105,5 +105,5 @@ variable "gcp_region" {
 variable "gke_cluster_name" {
   description = "Name of the target GKE cluster to connect Helm to"
   type        = string
-  default     = "mis-research-cloud-native-gke"
+  default     = "mis-cloud-native-gke"
 }

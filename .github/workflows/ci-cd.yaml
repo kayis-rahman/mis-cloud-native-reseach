@@ -305,7 +305,7 @@ jobs:
         echo "🔧 Configuring kubectl for GKE cluster..."
         
         # Configure cluster parameters (static)
-        CLUSTER_NAME="mis-research-cloud-native-gke"
+        CLUSTER_NAME="mis-cloud-native-gke"
         CLUSTER_LOCATION="us-central1"
         PROJECT_ID="${{ secrets.GCP_PROJECT }}"
         
